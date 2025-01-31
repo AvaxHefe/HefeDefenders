@@ -1,7 +1,7 @@
-import { initializeDatabase } from './db';
+const { initializeDatabase } = require('./db');
 
 /** @type {import('next').NextApiHandler} */
-export default async function handler(req, res) {
+const handler = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -54,4 +54,6 @@ export default async function handler(req, res) {
       });
     }
   }
-}
+};
+
+module.exports = handler;

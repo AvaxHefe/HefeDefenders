@@ -1,6 +1,7 @@
-import { initializeDatabase, getLeaderboard } from './db';
+const { initializeDatabase, getLeaderboard } = require('./db');
 
-export default async function handler(req, res) {
+/** @type {import('next').NextApiHandler} */
+const handler = async (req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -96,4 +97,6 @@ export default async function handler(req, res) {
       });
     }
   }
-}
+};
+
+module.exports = handler;

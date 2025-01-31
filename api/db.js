@@ -1,6 +1,6 @@
-import { sql } from '@vercel/postgres';
+const { sql } = require('@vercel/postgres');
 
-export async function initializeDatabase() {
+async function initializeDatabase() {
   try {
     console.log('Testing database connection...');
     const result = await sql`SELECT NOW()`;
@@ -46,7 +46,7 @@ export async function initializeDatabase() {
   }
 }
 
-export async function getLeaderboard(page = 1, limit = 10) {
+async function getLeaderboard(page = 1, limit = 10) {
   try {
     const offset = (page - 1) * limit;
 
@@ -81,7 +81,7 @@ export async function getLeaderboard(page = 1, limit = 10) {
   }
 }
 
-export async function saveScore(walletAddress, score) {
+async function saveScore(walletAddress, score) {
   try {
     const result = await sql`
       INSERT INTO leaderboard (wallet_address, score, last_updated)
@@ -103,3 +103,9 @@ export async function saveScore(walletAddress, score) {
     throw error;
   }
 }
+
+module.exports = {
+  initializeDatabase,
+  getLeaderboard,
+  saveScore
+};

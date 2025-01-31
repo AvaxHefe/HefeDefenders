@@ -1,4 +1,4 @@
-import { initializeDatabase, saveScore } from './db';
+const { initializeDatabase, saveScore } = require('./db');
 
 // Simple rate limiting
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
@@ -16,7 +16,8 @@ function isRateLimited(walletAddress) {
   return recentRequests.length >= RATE_LIMIT_MAX;
 }
 
-export default async function handler(req, res) {
+/** @type {import('next').NextApiHandler} */
+const handler = async (req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -107,4 +108,6 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['POST']);
     res.status(405).json({ error: 'Method not allowed' });
   }
-}
+};
+
+module.exports = handler;

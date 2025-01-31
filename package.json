@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "description": "A retro-style space shooter game built with vanilla JavaScript",
   "private": true,
+  "type": "module",
   "scripts": {
     "start": "npx serve",
     "dev": "npx serve",
-    "build": "mkdir -p public && cp -r index.html style.css js assets public/ && cp favicon.ico public/"
+    "build": "mkdir -p public && cp -r index.html style.css js assets public/ && cp favicon.ico public/",
+    "postinstall": "npm install @vercel/postgres@latest"
   },
   "keywords": [
     "game",
@@ -19,11 +21,11 @@
   "dependencies": {
     "@thirdweb-dev/sdk": "^4.0.23",
     "@thirdweb-dev/react": "^4.1.17",
-    "@vercel/postgres": "^0.5.1",
+    "@vercel/postgres": "latest",
     "ethers": "^5.7.2",
     "serve": "^14.0.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "18.x"
   }
 }
