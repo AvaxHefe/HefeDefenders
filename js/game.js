@@ -51,7 +51,7 @@ class EnemyWave {
             for (let col = 0; col < cols; col++) {
                 this.enemies.push({
                     x: col * spacing + 30,
-                    y: row * spacing + 50 + this.yOffset,
+                    y: row * spacing + 100 + this.yOffset, // Moved down by 50px
                     width: 30,
                     height: 25,
                     type: Math.floor(Math.random() * 4) + 1,
@@ -259,7 +259,7 @@ function gameLoop() {
 
     // Check if enemies reached bottom
     currentWave.enemies.forEach((enemy, index) => {
-        if (enemy.alive && enemy.y + enemy.height >= canvas.height - 50) {
+        if (enemy.alive && enemy.y + enemy.height >= canvas.height - 100) { // Adjusted to match new spawn height
             lives--;
             livesDisplay.textContent = lives;
             enemy.alive = false;

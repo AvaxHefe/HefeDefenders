@@ -57,11 +57,20 @@ try {
     console.log('Firebase initialized with app:', app.name);
     
     // Test database connection using modular SDK
+    console.log('Testing Firebase connection...');
+    console.log('Available Firestore methods:', Object.keys(window.getFirestore));
+    
     const scoresRef = window.getFirestore.collection(db, 'scores');
-    window.getFirestore.getDocs(window.getFirestore.query(scoresRef, window.getFirestore.limit(1)))
+    console.log('Created scores collection reference');
+    
+    const testQuery = window.getFirestore.query(scoresRef, window.getFirestore.limit(1));
+    console.log('Created test query');
+    
+    window.getFirestore.getDocs(testQuery)
         .then((snapshot) => {
             console.log('Successfully connected to Firebase leaderboard');
             console.log('Current scores count:', snapshot.size);
+            console.log('First document:', snapshot.docs[0]?.data());
             isOnline = true;
             updateLeaderboard(); // Refresh leaderboard after connection
         })
@@ -198,35 +207,68 @@ async function updateLeaderboard() {
 
   // Only attempt to fetch online scores if we have a valid connection
   if (db && isOnline) {
+    console.log('Attempting to fetch online scores...');
     try {
+      console.log('Creating scores collection reference...');
       const scoresRef = window.getFirestore.collection(db, 'scores');
+      
+      console.log('Building query...');
       const q = window.getFirestore.query(
         scoresRef,
         window.getFirestore.orderBy('score', 'desc'),
         window.getFirestore.limit(10)
       );
+      
+      console.log('Executing query...');
       const snapshot = await window.getFirestore.getDocs(q);
+      console.log('Query results:', snapshot);
 
       if (!snapshot.empty) {
+        console.log('Found online scores:', snapshot.size);
         // Add a separator between local and online scores
         const separatorDiv = document.createElement('div');
         separatorDiv.className = 'scores-separator';
         separatorDiv.textContent = '🌐 Global Leaderboard 🌐';
         leaderboardDiv.appendChild(separatorDiv);
 
-        snapshot.docs.forEach((doc, index) => {
-          const data = doc.data();
-          const scoreDiv = document.createElement('div');
-          scoreDiv.innerHTML = `
-            <span>${index + 1}. ${data.name}</span>
-            <span>${data.score}</span>
-          `;
-          leaderboardDiv.appendChild(scoreDiv);
+        const docs = snapshot.docs || [];
+        console.log('Processing docs:', docs.length);
+        
+        docs.forEach((doc, index) => {
+          try {
+            const data = doc.data();
+            console.log('Processing score:', data);
+            
+            const scoreDiv = document.createElement('div');
+            scoreDiv.innerHTML = `
+              <span>${index + 1}. ${data.name}</span>
+              <span>${data.score}</span>
+            `;
+            leaderboardDiv.appendChild(scoreDiv);
+          } catch (err) {
+            console.error('Error processing doc:', err, doc);
+          }
         });
       }
     } catch (error) {
-      console.log('Failed to fetch online scores, showing local only');
+      console.error('Failed to fetch online scores:', error);
+      console.log('Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+        firestoreState: {
+          db: !!db,
+          isOnline,
+          methods: Object.keys(window.getFirestore)
+        }
+      });
       isOnline = false;
+      
+      // Try to reconnect in the background
+      setTimeout(() => {
+        console.log('Attempting to reconnect to Firebase...');
+        updateLeaderboard();
+      }, 5000);
     }
   }
 }
