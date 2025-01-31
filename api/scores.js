@@ -1,12 +1,4 @@
-import { sql, createPool } from '@vercel/postgres';
-
-// Create a connection pool
-const pool = createPool({
-  connectionString: process.env.POSTGRES_URL,
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+import { initializeDatabase, saveScore } from './db';
 
 // Simple rate limiting
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
@@ -37,7 +29,6 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    let client;
     try {
       console.log('Score submission request received');
       const { walletAddress, score } = req.body;
@@ -65,53 +56,15 @@ export default async function handler(req, res) {
       userRequests.push(Date.now());
       rateLimitMap.set(walletAddress, userRequests);
 
-      // Get a client from the pool
-      console.log('Getting database connection from pool...');
-      client = await pool.connect();
+      // Initialize database if needed
+      await initializeDatabase();
 
-      // First check if the table exists
-      console.log('Checking if leaderboard table exists...');
-      const tableExists = await client.sql`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables
-          WHERE table_name = 'leaderboard'
-        );
-      `;
+      // Save the score
+      console.log('Saving score to database...');
+      const result = await saveScore(walletAddress, score);
+      console.log('Score saved successfully');
 
-      if (!tableExists.rows[0].exists) {
-        console.log('Leaderboard table does not exist, creating...');
-        // Create the table if it doesn't exist
-        await client.sql`
-          CREATE TABLE IF NOT EXISTS leaderboard (
-            id SERIAL PRIMARY KEY,
-            wallet_address TEXT NOT NULL,
-            score INTEGER NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            CONSTRAINT unique_wallet UNIQUE (wallet_address),
-            CONSTRAINT score_positive CHECK (score >= 0),
-            CONSTRAINT valid_wallet CHECK (wallet_address ~ '^0x[a-fA-F0-9]{40}$')
-          )
-        `;
-        
-        await client.sql`CREATE INDEX IF NOT EXISTS leaderboard_score_idx ON leaderboard(score DESC)`;
-        console.log('Leaderboard table created successfully');
-      }
-
-      // Upsert score into leaderboard
-      console.log('Upserting score into leaderboard...');
-      const result = await client.sql`
-        INSERT INTO leaderboard (wallet_address, score, last_updated)
-        VALUES (${walletAddress}, ${score}, NOW())
-        ON CONFLICT (wallet_address) 
-        DO UPDATE SET 
-          score = GREATEST(leaderboard.score, ${score}),
-          last_updated = NOW()
-        RETURNING score
-      `;
-      console.log('Score upserted successfully');
-      
-      const updatedScore = result.rows[0].score;
+      const updatedScore = result.score;
       
       res.status(200).json({ 
         success: true,
@@ -148,11 +101,6 @@ export default async function handler(req, res) {
           message: error.message,
           code: error.code
         });
-      }
-    } finally {
-      if (client) {
-        console.log('Releasing database connection back to pool');
-        client.release();
       }
     }
   } else {
