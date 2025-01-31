@@ -414,10 +414,13 @@ class ScoreManager {
             // Medal emojis for top 3
             const medals = ['🥇', '🥈', '🥉'];
 
-            leaderboardEl.innerHTML = data.scores.map((score, index) => {
+            leaderboardEl.innerHTML = data.scores.filter(score => score).map((score, index) => {
                 const rankDisplay = index < 3 ? medals[index] : `#${index + 1}`;
-                const displayName = score.nickname ||
-                    `${score.wallet_address.slice(0, 6)}...${score.wallet_address.slice(-4)}`;
+                const displayName = score.nickname || (
+                    score.wallet_address ?
+                    `${score.wallet_address.slice(0, 6)}...${score.wallet_address.slice(-4)}` :
+                    score.wallet_address // If it's null/undefined, just return it as is
+                );
                 const scoreValue = score.score.toLocaleString();
                 const prizeAmount = score.prizeAmount ? ` (${score.prizeAmount} USDC)` : '';
 
