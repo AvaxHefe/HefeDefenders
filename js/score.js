@@ -52,21 +52,19 @@ let db;
 let isOnline = false;  // Start offline by default
 
 try {
-    // Initialize Firebase with compatibility version
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
+    // Initialize Firebase with modular SDK
+    const firebase = window.initFirebase(firebaseConfig);
+    db = firebase.db;
     console.log('Firebase initialized');
     
-    // Configure Firestore for better performance
-    db.settings({
-        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-    });
-
     // Test database connection
     console.log('Testing Firebase connection...');
-    db.collection('scores')
-        .limit(1)
-        .get()
+    const testQuery = firebase.query(
+        firebase.collection(db, 'scores'),
+        firebase.limit(1)
+    );
+    
+    firebase.getDocs(testQuery)
         .then(snapshot => {
             console.log('Successfully connected to Firebase leaderboard');
             console.log('Current scores count:', snapshot.size);
@@ -133,7 +131,8 @@ async function submitToLeaderboard(name, score) {
     let retries = 3;
     while (retries > 0) {
       try {
-        await db.collection('scores').add(scoreData);
+        const scoresRef = firebase.collection(db, 'scores');
+        await firebase.addDoc(scoresRef, scoreData);
         console.log('Score submitted to global leaderboard');
         submitButton.textContent = 'Saved Online!';
         isOnline = true;
@@ -208,10 +207,13 @@ async function updateLeaderboard() {
     console.log('Attempting to fetch online scores...');
     try {
       console.log('Executing Firestore query...');
-      const snapshot = await db.collection('scores')
-        .orderBy('score', 'desc')
-        .limit(10)
-        .get();
+      const scoresRef = firebase.collection(db, 'scores');
+      const q = firebase.query(
+        scoresRef,
+        firebase.orderBy('score', 'desc'),
+        firebase.limit(10)
+      );
+      const snapshot = await firebase.getDocs(q);
       console.log('Query results:', snapshot);
 
       if (!snapshot.empty) {
