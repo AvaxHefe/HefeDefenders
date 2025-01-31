@@ -153,55 +153,61 @@ class ScoreManager {
                     walletAddress.textContent = `${address.slice(0,6)}...${address.slice(-4)}`;
                     walletAddress.style.display = 'block';
                     connectWalletBtn.style.display = 'none';
-                    document.getElementById('nicknameSection').classList.remove('hidden');
 
-                    // Handle nickname save
+                    // Handle nickname section
+                    const nicknameSection = document.getElementById('nicknameSection');
                     const nicknameInput = document.getElementById('nicknameInput');
                     const saveNicknameBtn = document.getElementById('saveNickname');
                     
-                    saveNicknameBtn.addEventListener('click', async () => {
-                        const nickname = nicknameInput.value.trim();
-                        if (!nickname) {
-                            alert('Please enter a nickname');
-                            return;
-                        }
-
-                        // Validate nickname format
-                        const nicknameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
-                        if (!nicknameRegex.test(nickname)) {
-                            alert('Nickname must be 3-20 characters long and contain only letters, numbers, underscores, and hyphens');
-                            return;
-                        }
-
-                        try {
-                            const response = await fetch('/api/nickname', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    walletAddress: address,
-                                    nickname: nickname
-                                })
-                            });
-
-                            if (!response.ok) {
-                                const data = await response.json();
-                                throw new Error(data.error || 'Failed to save nickname');
+                    if (nicknameSection && nicknameInput && saveNicknameBtn) {
+                        nicknameSection.classList.remove('hidden');
+                        saveNicknameBtn.addEventListener('click', async () => {
+                            const nickname = nicknameInput.value.trim();
+                            if (!nickname) {
+                                alert('Please enter a nickname');
+                                return;
                             }
 
-                            // Hide nickname section and show start button
-                            document.getElementById('nicknameSection').classList.add('hidden');
-                            startButton.classList.remove('hidden');
-                            
-                            // Update wallet display to include nickname
-                            walletAddress.textContent = `${nickname} (${address.slice(0,6)}...${address.slice(-4)})`;
+                            // Validate nickname format
+                            const nicknameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
+                            if (!nicknameRegex.test(nickname)) {
+                                alert('Nickname must be 3-20 characters long and contain only letters, numbers, underscores, and hyphens');
+                                return;
+                            }
 
-                        } catch (error) {
-                            alert(error.message);
-                        }
-                    });
-                    if (buyLivesBtn) buyLivesBtn.disabled = false;
+                            try {
+                                const response = await fetch('/api/nickname', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        walletAddress: address,
+                                        nickname: nickname
+                                    })
+                                });
+
+                                if (!response.ok) {
+                                    const data = await response.json();
+                                    throw new Error(data.error || 'Failed to save nickname');
+                                }
+
+                                // Hide nickname section and show start button
+                                nicknameSection.classList.add('hidden');
+                                startButton.classList.remove('hidden');
+                                
+                                // Update wallet display to include nickname
+                                walletAddress.textContent = `${nickname} (${address.slice(0,6)}...${address.slice(-4)})`;
+
+                            } catch (error) {
+                                alert(error.message);
+                            }
+                        });
+                    }
+
+                    if (buyLivesBtn) {
+                        buyLivesBtn.disabled = false;
+                    }
                     
                     // Get and display USDC balance
                     await this.updateUSDCBalance(balanceDisplay);
