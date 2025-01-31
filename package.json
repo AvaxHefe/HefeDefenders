@@ -19,10 +19,12 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@thirdweb-dev/sdk": "^4.0.23",
     "@thirdweb-dev/react": "^4.1.17",
+    "@thirdweb-dev/sdk": "^4.0.23",
     "@vercel/postgres": "latest",
+    "cors": "^2.8.5",
     "ethers": "^5.7.2",
+    "express": "^4.21.2",
     "serve": "^14.0.0"
   },
   "engines": {
