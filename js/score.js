@@ -212,11 +212,43 @@ class ScoreManager {
                     // Get and display USDC balance
                     await this.updateUSDCBalance(balanceDisplay);
                     
-                    // Initialize with 1 life
-                    window.lives = 1;
-                    localStorage.setItem('currentLives', window.lives);
-                    if (window.livesDisplay) {
-                        window.livesDisplay.textContent = window.lives;
+                    // Try to claim free life
+                    try {
+                        const claimResponse = await fetch('https://hefe-defenders.vercel.app/api/claim-free-life', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                walletAddress: address
+                            })
+                        });
+
+                        const claimData = await claimResponse.json();
+                        
+                        if (claimResponse.ok) {
+                            window.lives = 1;
+                            localStorage.setItem('currentLives', window.lives);
+                            if (window.livesDisplay) {
+                                window.livesDisplay.textContent = window.lives;
+                            }
+                            console.log('Free life claimed successfully');
+                        } else {
+                            console.log('No free life available:', claimData.error);
+                            window.lives = 0;
+                            localStorage.setItem('currentLives', window.lives);
+                            if (window.livesDisplay) {
+                                window.livesDisplay.textContent = window.lives;
+                            }
+                            alert('You have already used your free life. Please purchase more lives to continue playing.');
+                        }
+                    } catch (error) {
+                        console.error('Error claiming free life:', error);
+                        window.lives = 0;
+                        localStorage.setItem('currentLives', window.lives);
+                        if (window.livesDisplay) {
+                            window.livesDisplay.textContent = window.lives;
+                        }
                     }
                     
                     console.log('Wallet connected successfully:', address);

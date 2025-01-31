@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS leaderboard (
     CONSTRAINT unique_nickname UNIQUE (nickname),
     CONSTRAINT score_positive CHECK (score >= 0),
     CONSTRAINT valid_wallet CHECK (wallet_address ~ '^0x[a-fA-F0-9]{40}$'),
-    CONSTRAINT valid_nickname CHECK (nickname ~ '^[a-zA-Z0-9_-]{3,20}$')
+    CONSTRAINT valid_nickname CHECK (nickname ~ '^[a-zA-Z0-9_-]{3,20}$'),
+    used_free_life BOOLEAN DEFAULT FALSE
 );
 
 -- Create weekly payouts table to track rewards
