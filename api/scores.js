@@ -41,9 +41,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid wallet address' });
       }
 
-      if (!score || typeof score !== 'number' || score < 0) {
-        console.log('Invalid score:', score);
-        return res.status(400).json({ error: 'Invalid score' });
+      if (score === undefined || score === null || typeof score !== 'number' || score < 0) {
+        console.log('Invalid score:', score, typeof score);
+        return res.status(400).json({ error: 'Invalid score', details: `Score: ${score}, Type: ${typeof score}` });
       }
 
       // Check rate limit
