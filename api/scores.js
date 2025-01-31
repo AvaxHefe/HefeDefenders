@@ -1,4 +1,4 @@
-import { createClient } from '@vercel/postgres';
+import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
   // Add CORS headers
@@ -11,39 +11,25 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  let client;
-  
   try {
-    // Log environment check
-    console.log('Environment check:', {
-      hasPostgresUrl: !!process.env.POSTGRES_URL,
-      postgresUrlLength: process.env.POSTGRES_URL?.length || 0,
-      nodeEnv: process.env.NODE_ENV
+    // Log request details
+    console.log('API Request:', {
+      method: req.method,
+      url: req.url,
+      body: req.method === 'POST' ? req.body : undefined
     });
 
-    // Initialize client
-    client = createClient();
-    
-    // Connect with timeout
-    const connectPromise = client.connect();
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Connection timeout')), 5000)
-    );
-    
-    await Promise.race([connectPromise, timeoutPromise]);
-    
-    console.log('Database connected successfully');
-
     if (req.method === 'GET') {
-      console.log('Executing SELECT query');
-      const result = await client.sql`
+      // Get top scores
+      const { rows } = await sql`
         SELECT name, score, submitted_at
         FROM scores
         ORDER BY score DESC
         LIMIT 10;
       `;
-      console.log('Query result:', result.rows);
-      return res.status(200).json(result.rows);
+      
+      console.log('Retrieved scores:', rows);
+      return res.status(200).json(rows);
     }
 
     if (req.method === 'POST') {
@@ -56,14 +42,14 @@ export default async function handler(req, res) {
         });
       }
 
-      console.log('Executing INSERT query');
-      const result = await client.sql`
+      const { rows } = await sql`
         INSERT INTO scores (name, score, submitted_at)
         VALUES (${name}, ${score}, NOW())
         RETURNING id;
       `;
-      console.log('Insert result:', result.rows[0]);
-      return res.status(200).json({ id: result.rows[0].id });
+
+      console.log('Score saved:', rows[0]);
+      return res.status(200).json({ id: rows[0].id });
     }
 
     return res.status(405).json({ 
@@ -76,10 +62,6 @@ export default async function handler(req, res) {
       message: error.message,
       stack: error.stack,
       code: error.code,
-      connectionDetails: {
-        hasClient: !!client,
-        isConnected: client?.isConnected,
-      },
       env: {
         hasPostgresUrl: !!process.env.POSTGRES_URL,
         postgresUrlLength: process.env.POSTGRES_URL?.length || 0,
@@ -94,16 +76,5 @@ export default async function handler(req, res) {
         type: error.name
       }
     });
-
-  } finally {
-    // Always try to end the client connection
-    try {
-      if (client) {
-        await client.end();
-        console.log('Database connection closed');
-      }
-    } catch (error) {
-      console.error('Error closing database connection:', error);
-    }
   }
 }
