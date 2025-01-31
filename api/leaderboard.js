@@ -1,4 +1,12 @@
-import { sql } from '@vercel/postgres';
+import { sql, createPool } from '@vercel/postgres';
+
+// Create a connection pool
+const pool = createPool({
+  connectionString: process.env.POSTGRES_URL,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -17,12 +25,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  let client;
   try {
     console.log('Leaderboard request received');
     
+    // Get a client from the pool
+    console.log('Getting database connection from pool...');
+    client = await pool.connect();
+    
     // First check if the table exists
     console.log('Checking if leaderboard table exists...');
-    const tableExists = await sql`
+    const tableExists = await client.sql`
       SELECT EXISTS (
         SELECT FROM information_schema.tables
         WHERE table_name = 'leaderboard'
@@ -32,7 +45,7 @@ export default async function handler(req, res) {
     if (!tableExists.rows[0].exists) {
       console.log('Leaderboard table does not exist, creating...');
       // Create the table if it doesn't exist
-      await sql`
+      await client.sql`
         CREATE TABLE IF NOT EXISTS leaderboard (
           id SERIAL PRIMARY KEY,
           wallet_address TEXT NOT NULL,
@@ -45,7 +58,7 @@ export default async function handler(req, res) {
         )
       `;
       
-      await sql`CREATE INDEX IF NOT EXISTS leaderboard_score_idx ON leaderboard(score DESC)`;
+      await client.sql`CREATE INDEX IF NOT EXISTS leaderboard_score_idx ON leaderboard(score DESC)`;
       console.log('Leaderboard table created successfully');
     }
 
@@ -66,7 +79,7 @@ export default async function handler(req, res) {
 
     // Get total count for pagination
     console.log('Getting total count...');
-    const countResult = await sql`
+    const countResult = await client.sql`
       SELECT COUNT(*) as total FROM leaderboard
     `;
     const total = parseInt(countResult.rows[0].total);
@@ -74,7 +87,7 @@ export default async function handler(req, res) {
 
     // Get paginated results
     console.log('Fetching scores...');
-    const { rows } = await sql`
+    const { rows } = await client.sql`
       SELECT
         wallet_address,
         score,
@@ -122,26 +135,31 @@ export default async function handler(req, res) {
     
     // Handle specific database errors
     if (error.code === '42P01') { // Undefined table
-      res.status(500).json({
+      res.status(500).json({ 
         error: 'Leaderboard table not found',
         details: 'Please try again as the table will be created automatically'
       });
     } else if (error.code === '42703') { // Undefined column
-      res.status(500).json({
+      res.status(500).json({ 
         error: 'Invalid column reference',
         details: error.message
       });
     } else if (error.code === '28P01') { // Invalid password
-      res.status(500).json({
+      res.status(500).json({ 
         error: 'Database authentication failed',
         details: 'Please check database credentials'
       });
     } else {
-      res.status(500).json({
+      res.status(500).json({ 
         error: 'Internal server error',
         message: error.message,
         code: error.code
       });
+    }
+  } finally {
+    if (client) {
+      console.log('Releasing database connection back to pool');
+      client.release();
     }
   }
 }
