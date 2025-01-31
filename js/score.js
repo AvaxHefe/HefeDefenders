@@ -153,7 +153,54 @@ class ScoreManager {
                     walletAddress.textContent = `${address.slice(0,6)}...${address.slice(-4)}`;
                     walletAddress.style.display = 'block';
                     connectWalletBtn.style.display = 'none';
-                    startButton.classList.remove('hidden');
+                    document.getElementById('nicknameSection').classList.remove('hidden');
+
+                    // Handle nickname save
+                    const nicknameInput = document.getElementById('nicknameInput');
+                    const saveNicknameBtn = document.getElementById('saveNickname');
+                    
+                    saveNicknameBtn.addEventListener('click', async () => {
+                        const nickname = nicknameInput.value.trim();
+                        if (!nickname) {
+                            alert('Please enter a nickname');
+                            return;
+                        }
+
+                        // Validate nickname format
+                        const nicknameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
+                        if (!nicknameRegex.test(nickname)) {
+                            alert('Nickname must be 3-20 characters long and contain only letters, numbers, underscores, and hyphens');
+                            return;
+                        }
+
+                        try {
+                            const response = await fetch('/api/nickname', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    walletAddress: address,
+                                    nickname: nickname
+                                })
+                            });
+
+                            if (!response.ok) {
+                                const data = await response.json();
+                                throw new Error(data.error || 'Failed to save nickname');
+                            }
+
+                            // Hide nickname section and show start button
+                            document.getElementById('nicknameSection').classList.add('hidden');
+                            startButton.classList.remove('hidden');
+                            
+                            // Update wallet display to include nickname
+                            walletAddress.textContent = `${nickname} (${address.slice(0,6)}...${address.slice(-4)})`;
+
+                        } catch (error) {
+                            alert(error.message);
+                        }
+                    });
                     if (buyLivesBtn) buyLivesBtn.disabled = false;
                     
                     // Get and display USDC balance
@@ -294,18 +341,17 @@ class ScoreManager {
     /** @returns {Promise<void>} */
     async saveHighScore() {
         if (!this.walletConnected) {
-            console.log('Wallet not connected, score will not be saved on-chain');
+            console.log('Wallet not connected, score will not be saved');
             return;
         }
         
         try {
-            console.log('Attempting to save score for wallet:', this.userAddress);
+            console.log('Saving score for wallet:', this.userAddress);
             
             const response = await fetch("/api/scores", {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
                     walletAddress: this.userAddress,
@@ -313,15 +359,12 @@ class ScoreManager {
                 })
             });
 
-            const responseText = await response.text();
-            console.log('Raw response:', responseText);
-
             if (!response.ok) {
-                throw new Error(`Score submission failed: ${responseText}`);
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to save score');
             }
             
-            const result = JSON.parse(responseText);
-            console.log('Score saved:', result);
+            console.log('Score saved successfully');
             
             // Update leaderboard
             await this.updateLeaderboard();
@@ -335,20 +378,23 @@ class ScoreManager {
     /** @returns {Promise<void>} */
     async updateLeaderboard() {
         try {
-            console.log('Fetching leaderboard data...');
-            const response = await fetch("/api/leaderboard");
-            const responseText = await response.text();
-            console.log('Raw leaderboard response:', responseText);
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch leaderboard: ${responseText}`);
-            }
-            
-            const data = JSON.parse(responseText);
             const leaderboardEl = document.getElementById('leaderboardScores');
+            if (!leaderboardEl) return;
+
+            const response = await fetch("/api/leaderboard");
+            if (!response.ok) {
+                throw new Error('Failed to fetch leaderboard');
+            }
+
+            const data = await response.json();
             
             if (!data.scores || !Array.isArray(data.scores)) {
                 throw new Error('Invalid leaderboard data format');
+            }
+
+            if (data.scores.length === 0) {
+                leaderboardEl.innerHTML = '<div class="no-scores">No scores yet. Be the first to play!</div>';
+                return;
             }
 
             // Update prize pool information
@@ -358,34 +404,25 @@ class ScoreManager {
                 document.getElementById('secondPlacePrize').textContent = data.prizePool.distribution.secondPlace;
                 document.getElementById('thirdPlacePrize').textContent = data.prizePool.distribution.thirdPlace;
             }
-            
-            if (leaderboardEl) {
-                if (data.scores.length === 0) {
-                    leaderboardEl.innerHTML = '<div class="no-scores">No scores yet. Be the first to play!</div>';
-                    return;
-                }
 
-                // Get top 10 scores
-                const topScores = data.scores.slice(0, 10);
-                
-                // Medal emojis for top 3
-                const medals = ['🥇', '🥈', '🥉'];
-                
-                leaderboardEl.innerHTML = topScores.map((score, index) => {
-                    const rankDisplay = index < 3 ? medals[index] : `#${index + 1}`;
-                    const addressDisplay = score.walletAddress;
-                    const scoreValue = typeof score.score === 'number' ? score.score.toLocaleString() : '0';
-                    const prizeAmount = score.prizeAmount ? ` (${score.prizeAmount} USDC)` : '';
-                    
-                    return `
-                        <div class="leaderboard-entry ${index < 3 ? 'top-three' : ''}">
-                            <span class="rank">${rankDisplay}</span>
-                            <span class="address">${addressDisplay}</span>
-                            <span class="score">${scoreValue}${prizeAmount}</span>
-                        </div>
-                    `;
-                }).join('');
-            }
+            // Medal emojis for top 3
+            const medals = ['🥇', '🥈', '🥉'];
+
+            leaderboardEl.innerHTML = data.scores.map((score, index) => {
+                const rankDisplay = index < 3 ? medals[index] : `#${index + 1}`;
+                const displayName = score.nickname ||
+                    `${score.wallet_address.slice(0, 6)}...${score.wallet_address.slice(-4)}`;
+                const scoreValue = score.score.toLocaleString();
+                const prizeAmount = score.prizeAmount ? ` (${score.prizeAmount} USDC)` : '';
+
+                return `
+                    <div class="leaderboard-entry ${index < 3 ? 'top-three' : ''}">
+                        <span class="rank">${rankDisplay}</span>
+                        <span class="address">${displayName}</span>
+                        <span class="score">${scoreValue}${prizeAmount}</span>
+                    </div>
+                `;
+            }).join('');
             
         } catch (error) {
             console.error('Failed to update leaderboard:', error);
