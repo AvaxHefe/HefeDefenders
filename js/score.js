@@ -17,6 +17,19 @@ class ScoreManager {
 
     async initializeWeb3() {
         try {
+            // Initialize database first
+            try {
+                const response = await fetch('/api/init-db', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (!response.ok) {
+                    console.warn('Database initialization warning:', await response.text());
+                }
+            } catch (dbError) {
+                console.warn('Database initialization warning:', dbError);
+            }
+
             // Setup UI elements
             const connectWalletBtn = document.getElementById('connectWallet');
             const walletAddress = document.getElementById('walletAddress');
@@ -28,6 +41,22 @@ class ScoreManager {
             if (!connectWalletBtn || !walletAddress || !startButton || !balanceDisplay) {
                 console.error('Required UI elements not found');
                 return;
+            }
+
+            // Handle Web3 provider initialization
+            if (typeof window.ethereum !== 'undefined') {
+                // Store original provider
+                const originalProvider = window.ethereum;
+                
+                // Define non-configurable ethereum property
+                Object.defineProperty(window, 'ethereum', {
+                    value: originalProvider,
+                    writable: false,
+                    configurable: false
+                });
+
+                // Disable auto refresh
+                window.ethereum.autoRefreshOnNetworkChange = false;
             }
 
             // Setup wallet connection

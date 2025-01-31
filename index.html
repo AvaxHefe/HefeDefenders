@@ -78,32 +78,6 @@
     </script>
 
     <!-- Game Scripts -->
-    <script>
-        // Handle Web3 provider conflicts
-        window.addEventListener('load', () => {
-            try {
-                // Store original providers if they exist
-                const originalEthereum = window.ethereum;
-                const originalWeb3 = window.web3;
-
-                // Clear existing providers
-                delete window.ethereum;
-                delete window.web3;
-
-                // Restore original providers
-                if (originalEthereum) {
-                    window.ethereum = originalEthereum;
-                    window.ethereum.autoRefreshOnNetworkChange = false;
-                }
-                if (originalWeb3) {
-                    window.web3 = originalWeb3;
-                }
-            } catch (error) {
-                console.warn('Web3 provider setup warning:', error);
-            }
-        });
-    </script>
-    <script src="init-db.js"></script>
     <script src="js/score.js"></script>
     <script src="js/game.js"></script>
 </body>
