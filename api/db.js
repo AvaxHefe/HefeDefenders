@@ -1,10 +1,25 @@
-const { sql } = require('@vercel/postgres');
+import { sql } from '@vercel/postgres';
 
-async function initializeDatabase() {
+async function testConnection() {
   try {
     console.log('Testing database connection...');
     const result = await sql`SELECT NOW()`;
     console.log('Database connection successful:', result.rows[0]);
+    return true;
+  } catch (error) {
+    console.error('Database connection test failed:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    throw error;
+  }
+}
+
+async function initializeDatabase() {
+  try {
+    // Test connection first
+    await testConnection();
 
     console.log('Checking if leaderboard table exists...');
     const tableExists = await sql`
@@ -16,20 +31,22 @@ async function initializeDatabase() {
 
     if (!tableExists.rows[0].exists) {
       console.log('Creating leaderboard table...');
-      await sql`
-        CREATE TABLE IF NOT EXISTS leaderboard (
-          id SERIAL PRIMARY KEY,
-          wallet_address TEXT NOT NULL,
-          score INTEGER NOT NULL,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          CONSTRAINT unique_wallet UNIQUE (wallet_address),
-          CONSTRAINT score_positive CHECK (score >= 0),
-          CONSTRAINT valid_wallet CHECK (wallet_address ~ '^0x[a-fA-F0-9]{40}$')
-        )
-      `;
+      await sql.begin(async (sql) => {
+        await sql`
+          CREATE TABLE IF NOT EXISTS leaderboard (
+            id SERIAL PRIMARY KEY,
+            wallet_address TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT unique_wallet UNIQUE (wallet_address),
+            CONSTRAINT score_positive CHECK (score >= 0),
+            CONSTRAINT valid_wallet CHECK (wallet_address ~ '^0x[a-fA-F0-9]{40}$')
+          )
+        `;
 
-      await sql`CREATE INDEX IF NOT EXISTS leaderboard_score_idx ON leaderboard(score DESC)`;
+        await sql`CREATE INDEX IF NOT EXISTS leaderboard_score_idx ON leaderboard(score DESC)`;
+      });
       console.log('Leaderboard table created successfully');
     } else {
       console.log('Leaderboard table already exists');
@@ -48,6 +65,9 @@ async function initializeDatabase() {
 
 async function getLeaderboard(page = 1, limit = 10) {
   try {
+    // Test connection first
+    await testConnection();
+
     const offset = (page - 1) * limit;
 
     const countResult = await sql`SELECT COUNT(*) as total FROM leaderboard`;
@@ -83,15 +103,21 @@ async function getLeaderboard(page = 1, limit = 10) {
 
 async function saveScore(walletAddress, score) {
   try {
-    const result = await sql`
-      INSERT INTO leaderboard (wallet_address, score, last_updated)
-      VALUES (${walletAddress}, ${score}, NOW())
-      ON CONFLICT (wallet_address) 
-      DO UPDATE SET 
-        score = GREATEST(leaderboard.score, ${score}),
-        last_updated = NOW()
-      RETURNING score
-    `;
+    // Test connection first
+    await testConnection();
+
+    const result = await sql.begin(async (sql) => {
+      const res = await sql`
+        INSERT INTO leaderboard (wallet_address, score, last_updated)
+        VALUES (${walletAddress}, ${score}, NOW())
+        ON CONFLICT (wallet_address) 
+        DO UPDATE SET 
+          score = GREATEST(leaderboard.score, ${score}),
+          last_updated = NOW()
+        RETURNING score
+      `;
+      return res;
+    });
 
     return result.rows[0];
   } catch (error) {
@@ -104,8 +130,9 @@ async function saveScore(walletAddress, score) {
   }
 }
 
-module.exports = {
+export {
   initializeDatabase,
   getLeaderboard,
-  saveScore
+  saveScore,
+  testConnection
 };
