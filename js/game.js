@@ -371,15 +371,20 @@ function gameLoop() {
             
             if (window.lives <= 0) {
                 gameActive = false;
-                if (window.scoreManager) {
-                    window.scoreManager.saveHighScore();
-                }
+                const finalScore = window.scoreManager.currentScore;
+                
+                // Update UI
                 const gameOverScreen = document.getElementById('gameOverScreen');
                 const finalScoreSpan = document.getElementById('finalScore');
                 if (finalScoreSpan) {
-                    finalScoreSpan.textContent = window.scoreManager.currentScore;
+                    finalScoreSpan.textContent = finalScore;
                 }
                 gameOverScreen.classList.remove('hidden');
+
+                // Save score after UI update
+                if (window.scoreManager && finalScore > 0) {
+                    window.scoreManager.saveHighScore();
+                }
             }
         }
     });

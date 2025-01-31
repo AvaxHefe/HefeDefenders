@@ -197,10 +197,18 @@ class ScoreManager {
                         await tx.wait();
                         
                         // Update lives and UI
-                        window.lives = (parseInt(localStorage.getItem('currentLives')) || 0) + 5;
-                        localStorage.setItem('currentLives', window.lives);
+                        const currentLives = parseInt(localStorage.getItem('currentLives')) || 0;
+                        const newLives = currentLives + 5;
+                        window.lives = newLives;
+                        localStorage.setItem('currentLives', newLives);
                         if (window.livesDisplay) {
-                            window.livesDisplay.textContent = window.lives;
+                            window.livesDisplay.textContent = newLives;
+                        }
+
+                        // Hide game over screen if visible
+                        const gameOverScreen = document.getElementById('gameOverScreen');
+                        if (gameOverScreen) {
+                            gameOverScreen.classList.add('hidden');
                         }
                         
                         if (transactionStatus) {
