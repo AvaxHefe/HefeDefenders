@@ -57,21 +57,47 @@ try {
     db = firebase.firestore();
     console.log('Firebase initialized');
     
-    // Enable offline persistence
-    db.enablePersistence()
-        .catch((err) => {
-            if (err.code === 'failed-precondition') {
-                console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-            } else if (err.code === 'unimplemented') {
-                console.log('Browser doesn\'t support persistence');
-            }
-        });
+    // Configure Firestore settings
+    db.settings({
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+        experimentalForceLongPolling: true, // Use long polling instead of WebSocket
+        merge: true
+    });
 
-    // Test database connection
+    // Enable offline persistence
+    db.enablePersistence({
+        synchronizeTabs: true
+    }).catch((err) => {
+        if (err.code === 'failed-precondition') {
+            console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+        } else if (err.code === 'unimplemented') {
+            console.log('Browser doesn\'t support persistence');
+        }
+    });
+
+    // Test database connection with retries
     console.log('Testing Firebase connection...');
-    db.collection('scores')
-        .limit(1)
-        .get()
+    let retries = 3;
+    const testConnection = async () => {
+        try {
+            const snapshot = await db.collection('scores').limit(1).get();
+            console.log('Successfully connected to Firebase leaderboard');
+            console.log('Current scores count:', snapshot.size);
+            isOnline = true;
+            updateLeaderboard();
+        } catch (error) {
+            console.error('Connection attempt failed:', error);
+            if (retries > 0) {
+                retries--;
+                console.log(`Retrying connection... (${retries} attempts left)`);
+                setTimeout(testConnection, 2000);
+            } else {
+                console.log('All connection attempts failed, operating in offline mode');
+                isOnline = false;
+            }
+        }
+    };
+    testConnection()
         .then((snapshot) => {
             console.log('Successfully connected to Firebase leaderboard');
             console.log('Current scores count:', snapshot.size);
