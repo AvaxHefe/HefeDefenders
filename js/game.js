@@ -162,7 +162,7 @@ const bgMusic = new Audio('assets/sounds/backgroundmusic.mp3');
 const laserSound = new Audio('assets/sounds/Lazer sound 1.wav');
 laserSound.volume = 0.25;  // Set laser sound to 25%
 bgMusic.loop = true;
-bgMusic.volume = 0.3;
+bgMusic.volume = 0.5;
 
 function initializeControls() {
     document.addEventListener('keydown', (e) => {
