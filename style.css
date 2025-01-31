@@ -122,6 +122,46 @@ body {
     word-break: break-all;
 }
 
+#nicknameSection {
+    margin: 15px 0;
+}
+
+#nicknameInput {
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #00ff00;
+    color: #00ff00;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 1em;
+    margin-right: 10px;
+    width: 200px;
+}
+
+#nicknameInput::placeholder {
+    color: rgba(0, 255, 0, 0.5);
+}
+
+#nicknameInput:focus {
+    outline: none;
+    box-shadow: 0 0 5px #00ff00;
+}
+
+#saveNickname {
+    background: #00ff00;
+    color: #000;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+#saveNickname:hover {
+    background: #00cc00;
+    transform: scale(1.05);
+}
+
 .transaction-status {
     margin-top: 10px;
     padding: 8px;

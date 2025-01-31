@@ -96,7 +96,7 @@ export default async function handler(req, res) {
     // Format the response and add prize amounts for top 3
     const formattedRows = scores.map((row, index) => ({
       rank: row.rank,
-      walletAddress: `${row.wallet_address.slice(0, 6)}...${row.wallet_address.slice(-4)}`,
+      displayName: row.nickname || `${row.wallet_address.slice(0, 6)}...${row.wallet_address.slice(-4)}`,
       score: row.score,
       lastUpdated: row.last_updated,
       ...(index < 3 && {

@@ -7,12 +7,15 @@ DROP TABLE IF EXISTS leaderboard;
 CREATE TABLE IF NOT EXISTS leaderboard (
     id SERIAL PRIMARY KEY,
     wallet_address TEXT NOT NULL,
+    nickname TEXT,
     score INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_wallet UNIQUE (wallet_address),
+    CONSTRAINT unique_nickname UNIQUE (nickname),
     CONSTRAINT score_positive CHECK (score >= 0),
-    CONSTRAINT valid_wallet CHECK (wallet_address ~ '^0x[a-fA-F0-9]{40}$')
+    CONSTRAINT valid_wallet CHECK (wallet_address ~ '^0x[a-fA-F0-9]{40}$'),
+    CONSTRAINT valid_nickname CHECK (nickname ~ '^[a-zA-Z0-9_-]{3,20}$')
 );
 
 -- Create weekly payouts table to track rewards
