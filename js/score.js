@@ -57,8 +57,8 @@ try {
     console.log('Firebase initialized with app:', app.name);
     
     // Test database connection using modular SDK
-    const collection = db.collection('scores');
-    collection.limit(1).get()
+    const scoresRef = window.getFirestore.collection(db, 'scores');
+    window.getFirestore.getDocs(window.getFirestore.query(scoresRef, window.getFirestore.limit(1)))
         .then((snapshot) => {
             console.log('Successfully connected to Firebase leaderboard');
             console.log('Current scores count:', snapshot.size);
@@ -125,7 +125,8 @@ async function submitToLeaderboard(name, score) {
     let retries = 3;
     while (retries > 0) {
       try {
-        await db.collection('scores').add(scoreData);
+        const scoresRef = window.getFirestore.collection(db, 'scores');
+        await window.getFirestore.addDoc(scoresRef, scoreData);
         console.log('Score submitted to global leaderboard');
         submitButton.textContent = 'Saved Online!';
         isOnline = true;
@@ -198,10 +199,13 @@ async function updateLeaderboard() {
   // Only attempt to fetch online scores if we have a valid connection
   if (db && isOnline) {
     try {
-      const snapshot = await db.collection('scores')
-        .orderBy('score', 'desc')
-        .limit(10)
-        .get();
+      const scoresRef = window.getFirestore.collection(db, 'scores');
+      const q = window.getFirestore.query(
+        scoresRef,
+        window.getFirestore.orderBy('score', 'desc'),
+        window.getFirestore.limit(10)
+      );
+      const snapshot = await window.getFirestore.getDocs(q);
 
       if (!snapshot.empty) {
         // Add a separator between local and online scores
