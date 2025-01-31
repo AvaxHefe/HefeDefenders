@@ -72,13 +72,14 @@ async function getLeaderboard(page = 1, limit = 10) {
     const total = parseInt(countResult.rows[0].total);
 
     const { rows } = await sql`
-      SELECT 
+      SELECT
         wallet_address,
+        nickname,
         score,
         last_updated,
         RANK() OVER (ORDER BY score DESC) as rank
-      FROM leaderboard 
-      ORDER BY score DESC 
+      FROM leaderboard
+      ORDER BY score DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
