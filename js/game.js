@@ -2,15 +2,15 @@
 class Player {
     constructor() {
         /** @type {number} */
-        this.x = canvas.width / 2;
+        this.x = 400; // canvas.width / 2
         /** @type {number} */
-        this.y = canvas.height - 50;
+        this.y = 550; // canvas.height - 50
         /** @type {number} */
-        this.width = 80 * window.gameScale.x;
+        this.width = 80;
         /** @type {number} */
-        this.height = 60 * window.gameScale.y;
+        this.height = 60;
         /** @type {number} */
-        this.speed = 7 * window.gameScale.x;
+        this.speed = 7;
         /** @type {Bullet[]} */
         this.bullets = [];
         /** @type {HTMLImageElement} */
@@ -25,9 +25,9 @@ class Player {
     }
 
     move(direction) {
-        const padding = 10 * window.gameScale.x;
+        const padding = 10;
         if (direction === 'left' && this.x > padding) this.x -= this.speed;
-        if (direction === 'right' && this.x < canvas.width - this.width - padding) this.x += this.speed;
+        if (direction === 'right' && this.x < 800 - this.width - padding) this.x += this.speed;
     }
 
     canShoot() {
@@ -44,11 +44,11 @@ class Player {
         if (!this.canShoot()) return;
         
         this.bullets.push({
-            x: this.x + this.width/2 - (2 * window.gameScale.x),
+            x: this.x + this.width/2 - 2,
             y: this.y,
-            width: 4 * window.gameScale.x,
-            height: 10 * window.gameScale.y,
-            speed: -8 * window.gameScale.y
+            width: 4,
+            height: 10,
+            speed: -8
         });
         
         this.lastShotTime = Date.now();
@@ -80,19 +80,18 @@ class EnemyWave {
         const rows = Math.min(3 + extraRows, 5);
         const cols = 12 + Math.min(this.waveNumber - 1, 4);
         
-        // Scale spacing based on canvas width
-        const baseSpacing = canvas.width / (cols + 2);
-        const spacing = Math.max(baseSpacing * 0.8, baseSpacing - (this.waveNumber * 2 * window.gameScale.x));
-        this.speed = (2 + Math.min(this.waveNumber * 0.5, 4)) * window.gameScale.x;
+        // Fixed spacing
+        const spacing = 60;
+        this.speed = 2 + Math.min(this.waveNumber * 0.5, 4);
         
-        const enemyWidth = 30 * window.gameScale.x;
-        const enemyHeight = 25 * window.gameScale.y;
+        const enemyWidth = 30;
+        const enemyHeight = 25;
         
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols; col++) {
                 this.enemies.push({
-                    x: col * spacing + (canvas.width - (cols * spacing)) / 2,
-                    y: row * spacing * 0.6 + (100 * window.gameScale.y) + this.yOffset,
+                    x: col * spacing + (800 - (cols * spacing)) / 2,
+                    y: row * spacing * 0.6 + 100 + this.yOffset,
                     width: enemyWidth,
                     height: enemyHeight,
                     type: Math.floor(Math.random() * 4) + 1,
@@ -105,19 +104,19 @@ class EnemyWave {
 
     move() {
         let edgeReached = false;
-        const padding = 10 * window.gameScale.x;
+        const padding = 10;
         
         this.enemies.forEach(enemy => {
             enemy.x += this.speed * this.direction;
-            if (enemy.x <= padding || enemy.x >= canvas.width - enemy.width - padding) {
+            if (enemy.x <= padding || enemy.x >= 800 - enemy.width - padding) {
                 edgeReached = true;
             }
         });
 
         if (edgeReached) {
             this.direction *= -1;
-            this.yOffset += 20 * window.gameScale.y;
-            this.enemies.forEach(enemy => enemy.y += 20 * window.gameScale.y);
+            this.yOffset += 20;
+            this.enemies.forEach(enemy => enemy.y += 20);
         }
     }
 }
@@ -165,33 +164,6 @@ bgMusic.addEventListener('timeupdate', () => {
     }
 });
 
-// Initialize game systems
-// Resize handler
-function resizeCanvas() {
-    const container = canvas.parentElement;
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    
-    // Maintain 4:3 aspect ratio
-    const aspectRatio = 4/3;
-    let width = containerWidth;
-    let height = width / aspectRatio;
-    
-    if (height > containerHeight) {
-        height = containerHeight;
-        width = height * aspectRatio;
-    }
-    
-    canvas.width = width;
-    canvas.height = height;
-    
-    // Update game scale factors
-    window.gameScale = {
-        x: width / 800, // relative to original 800px width
-        y: height / 600 // relative to original 600px height
-    };
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     try {
         console.log('Initializing game...');
@@ -203,11 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx = canvas.getContext('2d');
         if (!ctx) throw new Error('Could not get canvas context');
         
-        // Set initial canvas size
-        resizeCanvas();
-        
-        // Add resize listener
-        window.addEventListener('resize', resizeCanvas);
+        // Set fixed canvas size
+        canvas.width = 800;
+        canvas.height = 600;
         
         console.log('Canvas initialized');
         
@@ -417,19 +387,9 @@ function gameLoop() {
         currentWave.spawnWave();
     }
 
-    // Handle window resize
-    if (window.gameScale && player) {
-        const playerRelativeX = player.x / canvas.width;
-        resizeCanvas();
-        player.x = playerRelativeX * canvas.width;
-        player.width = 80 * window.gameScale.x;
-        player.height = 60 * window.gameScale.y;
-        player.speed = 7 * window.gameScale.x;
-    }
-
     // Check if enemies reached bottom
     currentWave.enemies.forEach((enemy, index) => {
-        const bottomThreshold = canvas.height - (100 * window.gameScale.y);
+        const bottomThreshold = 500; // canvas.height - 100
         if (enemy.alive && enemy.y + enemy.height >= bottomThreshold) {
             window.lives = Math.max(0, window.lives - 1); // Prevent negative lives
             window.livesDisplay.textContent = window.lives;
