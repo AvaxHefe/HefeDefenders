@@ -81,21 +81,25 @@
     <script>
         // Handle Web3 provider conflicts
         window.addEventListener('load', () => {
-            if (typeof window.ethereum !== 'undefined') {
-                window.ethereum.autoRefreshOnNetworkChange = false;
-                // Prevent redefining ethereum property
-                Object.defineProperty(window, 'ethereum', {
-                    enumerable: true,
-                    configurable: true,
-                    get: function() {
-                        return window._ethereum;
-                    },
-                    set: function(value) {
-                        if (!window._ethereum) {
-                            window._ethereum = value;
-                        }
-                    }
-                });
+            try {
+                // Store original providers if they exist
+                const originalEthereum = window.ethereum;
+                const originalWeb3 = window.web3;
+
+                // Clear existing providers
+                delete window.ethereum;
+                delete window.web3;
+
+                // Restore original providers
+                if (originalEthereum) {
+                    window.ethereum = originalEthereum;
+                    window.ethereum.autoRefreshOnNetworkChange = false;
+                }
+                if (originalWeb3) {
+                    window.web3 = originalWeb3;
+                }
+            } catch (error) {
+                console.warn('Web3 provider setup warning:', error);
             }
         });
     </script>
