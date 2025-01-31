@@ -204,12 +204,6 @@ class ScoreManager {
                         if (window.livesDisplay) {
                             window.livesDisplay.textContent = newLives;
                         }
-
-                        // Hide game over screen if visible
-                        const gameOverScreen = document.getElementById('gameOverScreen');
-                        if (gameOverScreen) {
-                            gameOverScreen.classList.add('hidden');
-                        }
                         
                         if (transactionStatus) {
                             transactionStatus.textContent = 'Purchase successful!';
