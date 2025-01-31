@@ -74,51 +74,51 @@ class EnemyWave {
         /** @type {number} */
         this.waveNumber = waveNumber;
     }
-spawnWave() {
-    const extraRows = Math.min(Math.floor((this.waveNumber - 1) / 5), 2);
-    const rows = Math.min(3 + extraRows, 5);
-    const cols = 12 + Math.min(this.waveNumber - 1, 4);
-    
-    // Scale spacing based on canvas width
-    const baseSpacing = canvas.width / (cols + 2);
-    const spacing = Math.max(baseSpacing * 0.8, baseSpacing - (this.waveNumber * 2 * window.gameScale.x));
-    this.speed = (2 + Math.min(this.waveNumber * 0.5, 4)) * window.gameScale.x;
-    
-    const enemyWidth = 30 * window.gameScale.x;
-    const enemyHeight = 25 * window.gameScale.y;
-    
-    for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-            this.enemies.push({
-                x: col * spacing + (canvas.width - (cols * spacing)) / 2,
-                y: row * spacing * 0.6 + (100 * window.gameScale.y) + this.yOffset,
-                width: enemyWidth,
-                height: enemyHeight,
-                type: Math.floor(Math.random() * 4) + 1,
-                alive: true,
-                pointsMultiplier: 1 + (this.waveNumber * 0.5)
-            });
+
+    spawnWave() {
+        const extraRows = Math.min(Math.floor((this.waveNumber - 1) / 5), 2);
+        const rows = Math.min(3 + extraRows, 5);
+        const cols = 12 + Math.min(this.waveNumber - 1, 4);
+        
+        // Scale spacing based on canvas width
+        const baseSpacing = canvas.width / (cols + 2);
+        const spacing = Math.max(baseSpacing * 0.8, baseSpacing - (this.waveNumber * 2 * window.gameScale.x));
+        this.speed = (2 + Math.min(this.waveNumber * 0.5, 4)) * window.gameScale.x;
+        
+        const enemyWidth = 30 * window.gameScale.x;
+        const enemyHeight = 25 * window.gameScale.y;
+        
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                this.enemies.push({
+                    x: col * spacing + (canvas.width - (cols * spacing)) / 2,
+                    y: row * spacing * 0.6 + (100 * window.gameScale.y) + this.yOffset,
+                    width: enemyWidth,
+                    height: enemyHeight,
+                    type: Math.floor(Math.random() * 4) + 1,
+                    alive: true,
+                    pointsMultiplier: 1 + (this.waveNumber * 0.5)
+                });
+            }
         }
     }
-}
 
-move() {
-    let edgeReached = false;
-    const padding = 10 * window.gameScale.x;
-    
-    this.enemies.forEach(enemy => {
-        enemy.x += this.speed * this.direction;
-        if (enemy.x <= padding || enemy.x >= canvas.width - enemy.width - padding) {
-            edgeReached = true;
+    move() {
+        let edgeReached = false;
+        const padding = 10 * window.gameScale.x;
+        
+        this.enemies.forEach(enemy => {
+            enemy.x += this.speed * this.direction;
+            if (enemy.x <= padding || enemy.x >= canvas.width - enemy.width - padding) {
+                edgeReached = true;
+            }
+        });
+
+        if (edgeReached) {
+            this.direction *= -1;
+            this.yOffset += 20 * window.gameScale.y;
+            this.enemies.forEach(enemy => enemy.y += 20 * window.gameScale.y);
         }
-    });
-
-    if (edgeReached) {
-        this.direction *= -1;
-        this.yOffset += 20 * window.gameScale.y;
-        this.enemies.forEach(enemy => enemy.y += 20 * window.gameScale.y);
-    }
-}
     }
 }
 
