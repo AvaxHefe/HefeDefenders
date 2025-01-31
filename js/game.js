@@ -1,15 +1,26 @@
+/** @type {Player} */
 class Player {
     constructor() {
+        /** @type {number} */
         this.x = 400;
+        /** @type {number} */
         this.y = 550;
+        /** @type {number} */
         this.width = 80;
+        /** @type {number} */
         this.height = 60;
+        /** @type {number} */
         this.speed = 7;
+        /** @type {Bullet[]} */
         this.bullets = [];
+        /** @type {HTMLImageElement} */
         this.sprite = new Image();
         this.sprite.src = 'assets/sprites/hefeship.png';
+        /** @type {number} */
         this.lastShotTime = 0;
+        /** @type {number} */
         this.shootCooldown = 200; // 200ms cooldown
+        /** @type {boolean} */
         this.isSpaceHeld = false;
     }
 
@@ -45,12 +56,21 @@ class Player {
     }
 }
 
+/** @type {EnemyWave} */
 class EnemyWave {
+    /**
+     * @param {number} [waveNumber=1]
+     */
     constructor(waveNumber = 1) {
+        /** @type {Enemy[]} */
         this.enemies = [];
+        /** @type {number} */
         this.speed = 2;
+        /** @type {number} */
         this.direction = 1;
+        /** @type {number} */
         this.yOffset = 0;
+        /** @type {number} */
         this.waveNumber = waveNumber;
     }
 
@@ -92,14 +112,19 @@ class EnemyWave {
 }
 
 // Game state
-let canvas, ctx;
-window.scoreManager = null;
+/** @type {HTMLCanvasElement | null} */
+let canvas = null;
+/** @type {CanvasRenderingContext2D | null} */
+let ctx = null;
+/** @type {Player | null} */
 let player = null;
+/** @type {EnemyWave | null} */
 let currentWave = null;
+/** @type {boolean} */
 let gameActive = false;
-window.lives = 1;
-window.livesDisplay = null;
+/** @type {HTMLElement | null} */
 let waveDisplay = null;
+/** @type {{[key: string]: boolean}} */
 let keys = {
     ArrowLeft: false,
     ArrowRight: false,
@@ -149,6 +174,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Please connect your wallet to start the game');
                 return;
             }
+            
+            const currentLives = parseInt(localStorage.getItem('currentLives')) || 0;
+            if (currentLives <= 0) {
+                alert('You need to buy more lives to play! Click the "Buy 5 Lives" button to continue playing.');
+                return;
+            }
+            
             startGame();
         });
         
@@ -156,6 +188,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const restartButton = document.getElementById('restartGame');
         if (restartButton) {
             restartButton.addEventListener('click', () => {
+                const currentLives = parseInt(localStorage.getItem('currentLives')) || 0;
+                if (currentLives <= 0) {
+                    alert('You need to buy more lives to play! Click the "Buy 5 Lives" button to continue playing.');
+                    return;
+                }
                 document.getElementById('gameOverScreen').classList.add('hidden');
                 startGame();
             });

@@ -1,10 +1,23 @@
+/** @implements {ScoreManager} */
 class ScoreManager {
     constructor() {
+        /** @type {number} */
         this.currentScore = 0;
-        this.highScore = localStorage.getItem('highScore') || 0;
+        /** @type {number} */
+        this.highScore = parseInt(localStorage.getItem('highScore') || '0');
+        /** @type {boolean} */
+        this.walletConnected = false;
+        /** @type {string} */
+        this.userAddress = '';
+        /** @type {any} */
+        this.usdcContract = null;
+        /** @type {any} */
+        this.signer = null;
+        
         this.updateScoreDisplay();
         
         // Configuration
+        /** @type {{chainId: number, usdcContract: string, merchantWallet: string, rpcUrl: string}} */
         this.config = {
             chainId: 43114, // Avalanche C-Chain
             usdcContract: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
@@ -15,6 +28,7 @@ class ScoreManager {
         this.initializeWeb3();
     }
 
+    /** @returns {Promise<void>} */
     async initializeWeb3() {
         try {
             // Initialize database first
@@ -215,6 +229,10 @@ class ScoreManager {
         }
     }
 
+    /**
+     * @param {HTMLElement} balanceDisplay
+     * @returns {Promise<void>}
+     */
     async updateUSDCBalance(balanceDisplay) {
         try {
             if (!this.usdcContract || !this.userAddress) {
@@ -231,6 +249,10 @@ class ScoreManager {
         }
     }
 
+    /**
+     * @param {number} points
+     * @returns {void}
+     */
     addPoints(points) {
         this.currentScore += points;
         if (this.currentScore > this.highScore) {
@@ -240,6 +262,7 @@ class ScoreManager {
         this.updateScoreDisplay();
     }
 
+    /** @returns {void} */
     updateScoreDisplay() {
         const currentScoreEl = document.getElementById('currentScore');
         const highScoreEl = document.getElementById('highScore');
@@ -250,6 +273,7 @@ class ScoreManager {
         }
     }
 
+    /** @returns {Promise<void>} */
     async saveHighScore() {
         if (!this.walletConnected) {
             console.log('Wallet not connected, score will not be saved on-chain');
@@ -257,18 +281,28 @@ class ScoreManager {
         }
         
         try {
+            console.log('Attempting to save score for wallet:', this.userAddress);
+            
             const response = await fetch("/api/scores", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
                 body: JSON.stringify({
                     walletAddress: this.userAddress,
                     score: this.currentScore
                 })
             });
 
-            if (!response.ok) throw new Error('Score submission failed');
+            const responseText = await response.text();
+            console.log('Raw response:', responseText);
+
+            if (!response.ok) {
+                throw new Error(`Score submission failed: ${responseText}`);
+            }
             
-            const result = await response.json();
+            const result = JSON.parse(responseText);
             console.log('Score saved:', result);
             
             // Update leaderboard
@@ -276,18 +310,35 @@ class ScoreManager {
             
         } catch (error) {
             console.error('Failed to save score:', error);
+            alert('Failed to save score. Please try again.');
         }
     }
 
+    /** @returns {Promise<void>} */
     async updateLeaderboard() {
         try {
+            console.log('Fetching leaderboard data...');
             const response = await fetch("/api/leaderboard");
-            if (!response.ok) throw new Error('Failed to fetch leaderboard');
+            const responseText = await response.text();
+            console.log('Raw leaderboard response:', responseText);
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch leaderboard: ${responseText}`);
+            }
             
-            const data = await response.json();
+            const data = JSON.parse(responseText);
             const leaderboardEl = document.getElementById('leaderboardScores');
             
+            if (!data.scores || !Array.isArray(data.scores)) {
+                throw new Error('Invalid leaderboard data format');
+            }
+            
             if (leaderboardEl) {
+                if (data.scores.length === 0) {
+                    leaderboardEl.innerHTML = '<div class="no-scores">No scores yet. Be the first to play!</div>';
+                    return;
+                }
+
                 // Get top 10 scores
                 const topScores = data.scores.slice(0, 10);
                 
@@ -296,13 +347,14 @@ class ScoreManager {
                 
                 leaderboardEl.innerHTML = topScores.map((score, index) => {
                     const rankDisplay = index < 3 ? medals[index] : `#${index + 1}`;
-                    const addressDisplay = score.walletAddress.slice(0, 6) + '...' + score.walletAddress.slice(-4);
+                    const addressDisplay = score.walletAddress;
+                    const scoreValue = typeof score.score === 'number' ? score.score.toLocaleString() : '0';
                     
                     return `
                         <div class="leaderboard-entry ${index < 3 ? 'top-three' : ''}">
                             <span class="rank">${rankDisplay}</span>
                             <span class="address">${addressDisplay}</span>
-                            <span class="score">${score.score.toLocaleString()}</span>
+                            <span class="score">${scoreValue}</span>
                         </div>
                     `;
                 }).join('');
@@ -312,7 +364,12 @@ class ScoreManager {
             console.error('Failed to update leaderboard:', error);
             const leaderboardEl = document.getElementById('leaderboardScores');
             if (leaderboardEl) {
-                leaderboardEl.innerHTML = '<div class="error-message">Failed to load leaderboard</div>';
+                leaderboardEl.innerHTML = `
+                    <div class="error-message">
+                        Failed to load leaderboard<br>
+                        <small>${error.message}</small>
+                    </div>
+                `;
             }
         }
     }
