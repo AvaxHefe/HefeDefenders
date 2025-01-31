@@ -27,13 +27,5 @@
       "src": "/(.*)",
       "dest": "/$1"
     }
-  ],
-  "env": {
-    "POSTGRES_URL": "@postgres-url"
-  },
-  "build": {
-    "env": {
-      "POSTGRES_URL": "@postgres-url"
-    }
-  }
+  ]
 }

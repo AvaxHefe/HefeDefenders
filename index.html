@@ -79,11 +79,27 @@
 
     <!-- Game Scripts -->
     <script>
-        // Prevent Web3 provider conflicts
-        if (typeof window.ethereum !== 'undefined') {
-            window.ethereum.autoRefreshOnNetworkChange = false;
-        }
+        // Handle Web3 provider conflicts
+        window.addEventListener('load', () => {
+            if (typeof window.ethereum !== 'undefined') {
+                window.ethereum.autoRefreshOnNetworkChange = false;
+                // Prevent redefining ethereum property
+                Object.defineProperty(window, 'ethereum', {
+                    enumerable: true,
+                    configurable: true,
+                    get: function() {
+                        return window._ethereum;
+                    },
+                    set: function(value) {
+                        if (!window._ethereum) {
+                            window._ethereum = value;
+                        }
+                    }
+                });
+            }
+        });
     </script>
+    <script src="init-db.js"></script>
     <script src="js/score.js"></script>
     <script src="js/game.js"></script>
 </body>
