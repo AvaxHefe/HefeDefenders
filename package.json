@@ -4,8 +4,8 @@
   "description": "A retro-style space shooter game built with vanilla JavaScript",
   "private": true,
   "scripts": {
-    "start": "npx serve public",
-    "dev": "npx serve public"
+    "start": "npx serve",
+    "dev": "npx serve"
   },
   "keywords": [
     "game",
@@ -16,6 +16,9 @@
   ],
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "firebase": "^10.7.0"
+  },
   "devDependencies": {
     "serve": "^14.0.0"
   }

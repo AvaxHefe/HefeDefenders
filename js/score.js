@@ -33,6 +33,7 @@ class ScoreManager {
 }
 
 // Firebase Leaderboard Integration
+// Get Firebase config from environment variables or fallback to defaults
 const firebaseConfig = {
   apiKey: "AIzaSyC9B_gA2K29bXbc4yKDolyCKFEft6eQss8",
   authDomain: "hefe-s.firebaseapp.com",
@@ -43,17 +44,36 @@ const firebaseConfig = {
   measurementId: "G-M1DMQCZBSH"
 };
 
+// Log Firebase initialization
+console.log('Initializing Firebase with project:', firebaseConfig.projectId);
+
 // Initialize Firebase with error handling
 let db;
 let isOnline = false;  // Start offline by default
 
 try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-    console.log('Firebase initialized');
+    const app = window.initializeFirebase(firebaseConfig);
+    db = window.getFirestore(app);
+    console.log('Firebase initialized with app:', app.name);
+    
+    // Test database connection using modular SDK
+    const collection = db.collection('scores');
+    collection.limit(1).get()
+        .then((snapshot) => {
+            console.log('Successfully connected to Firebase leaderboard');
+            console.log('Current scores count:', snapshot.size);
+            isOnline = true;
+            updateLeaderboard(); // Refresh leaderboard after connection
+        })
+        .catch(error => {
+            console.error('Firebase connection test failed:', error);
+            console.log('Falling back to local scores');
+            isOnline = false;
+        });
 } catch (error) {
     console.error('Firebase initialization failed:', error);
     console.log('Operating in offline mode only');
+    isOnline = false;
 }
 let pendingScores = [];
 let localHighScores = [];
@@ -90,27 +110,48 @@ async function submitToLeaderboard(name, score) {
 
   // Always update local high scores first
   updateLocalHighScores(name, score);
+  console.log('Local high scores updated');
   
-  // Only attempt Firebase submission if we have a valid connection
+  // Prepare score data
+  const scoreData = {
+    name: name,
+    score: score,
+    timestamp: new Date().toISOString(), // Use ISO string for consistency
+    submitted: new Date().toISOString()
+  };
+
+  // Attempt online submission with retries
   if (db && isOnline) {
-    try {
-      await db.collection('scores').add({
-        name: name,
-        score: score,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      submitButton.textContent = 'Saved Online!';
-    } catch (error) {
-      console.log('Firebase submission failed, operating in local mode');
-      isOnline = false;
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        await db.collection('scores').add(scoreData);
+        console.log('Score submitted to global leaderboard');
+        submitButton.textContent = 'Saved Online!';
+        isOnline = true;
+        break;
+      } catch (error) {
+        console.error(`Submission attempt ${4 - retries} failed:`, error);
+        retries--;
+        if (retries === 0) {
+          console.log('All submission attempts failed, saving locally');
+          isOnline = false;
+          pendingScores.push(scoreData);
+          localStorage.setItem('pendingScores', JSON.stringify(pendingScores));
+          submitButton.textContent = 'Saved Locally!';
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+      }
     }
   } else {
+    console.log('Offline mode: saving score locally');
+    pendingScores.push(scoreData);
+    localStorage.setItem('pendingScores', JSON.stringify(pendingScores));
     submitButton.textContent = 'Saved Locally!';
   }
 
   // Update the leaderboard display
-  updateLeaderboard();
+  await updateLeaderboard();
   
   // Reset button state
   setTimeout(() => {
