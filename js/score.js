@@ -57,15 +57,24 @@ try {
     db = firebase.firestore();
     console.log('Firebase initialized');
     
+    // Enable offline persistence
+    db.enablePersistence()
+        .catch((err) => {
+            if (err.code === 'failed-precondition') {
+                console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+            } else if (err.code === 'unimplemented') {
+                console.log('Browser doesn\'t support persistence');
+            }
+        });
+
     // Test database connection
     console.log('Testing Firebase connection...');
-    
-    // Test connection with simple query
-    db.collection('scores').get()
+    db.collection('scores')
+        .limit(1)
+        .get()
         .then((snapshot) => {
             console.log('Successfully connected to Firebase leaderboard');
             console.log('Current scores count:', snapshot.size);
-            console.log('First document:', snapshot.docs[0]?.data());
             isOnline = true;
             updateLeaderboard(); // Refresh leaderboard after connection
         })
