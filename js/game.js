@@ -76,13 +76,13 @@ class EnemyWave {
     }
 
     spawnWave() {
-        const extraRows = Math.min(Math.floor((this.waveNumber - 1) / 5), 2);
-        const rows = Math.min(3 + extraRows, 5);
-        const cols = 12 + Math.min(this.waveNumber - 1, 4);
+        const extraRows = Math.min(Math.floor((this.waveNumber - 1) / 8), 2);
+        const rows = Math.min(3 + extraRows, 4);
+        const cols = 8 + Math.min(Math.floor((this.waveNumber - 1) / 2), 4);
         
         // Fixed spacing
         const spacing = 60;
-        this.speed = 2 + Math.min(this.waveNumber * 0.5, 4);
+        this.speed = 2 + Math.min(this.waveNumber * 0.25, 3);
         
         const enemyWidth = 30;
         const enemyHeight = 25;
