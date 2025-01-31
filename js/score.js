@@ -25,7 +25,13 @@ class ScoreManager {
             rpcUrl: "https://api.avax.network/ext/bc/C/rpc"
         };
         
-        this.initializeWeb3();
+        // Initialize Web3 after a short delay to ensure DOM is ready
+        setTimeout(() => this.initializeWeb3(), 100);
+        
+        // Re-initialize Web3 when window is resized
+        window.addEventListener('resize', () => {
+            setTimeout(() => this.initializeWeb3(), 100);
+        });
     }
 
     /** @returns {Promise<void>} */
@@ -57,6 +63,10 @@ class ScoreManager {
                 return;
             }
 
+            // Remove existing event listeners by cloning and replacing the button
+            const newConnectWalletBtn = connectWalletBtn.cloneNode(true);
+            connectWalletBtn.parentNode.replaceChild(newConnectWalletBtn, connectWalletBtn);
+
             // Handle Web3 provider initialization
             if (typeof window.ethereum !== 'undefined') {
                 // Just disable auto refresh, don't modify the provider
@@ -68,10 +78,10 @@ class ScoreManager {
             }
 
             // Setup wallet connection
-            connectWalletBtn.addEventListener('click', async () => {
+            newConnectWalletBtn.addEventListener('click', async () => {
                 try {
-                    connectWalletBtn.disabled = true;
-                    connectWalletBtn.textContent = 'Connecting...';
+                    newConnectWalletBtn.disabled = true;
+                    newConnectWalletBtn.textContent = 'Connecting...';
                     
                     // Check if Core Wallet or MetaMask is installed
                     if (!window.ethereum) {
@@ -139,7 +149,7 @@ class ScoreManager {
                     // Update UI
                     walletAddress.textContent = `${address.slice(0,6)}...${address.slice(-4)}`;
                     walletAddress.style.display = 'block';
-                    connectWalletBtn.style.display = 'none';
+                    newConnectWalletBtn.style.display = 'none';
                     startButton.classList.remove('hidden');
                     if (buyLivesBtn) buyLivesBtn.disabled = false;
                     
@@ -159,8 +169,8 @@ class ScoreManager {
                     console.error('Wallet connection failed:', error);
                     alert(error.message || 'Failed to connect wallet. Please try again.');
                 } finally {
-                    connectWalletBtn.disabled = false;
-                    connectWalletBtn.textContent = 'Connect Wallet';
+                    newConnectWalletBtn.disabled = false;
+                    newConnectWalletBtn.textContent = 'Connect Wallet';
                 }
             });
 
