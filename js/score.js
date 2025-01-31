@@ -71,7 +71,7 @@ async function submitToLeaderboard(name, score) {
   console.log('Local high scores updated');
 
   try {
-    // Attempt to submit score to Vercel API
+    console.log('Submitting score to API:', { name, score });
     const response = await fetch('/api/scores', {
       method: 'POST',
       headers: {
@@ -83,11 +83,22 @@ async function submitToLeaderboard(name, score) {
       }),
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to submit score');
+    const responseText = await response.text();
+    console.log('Raw API Response:', responseText);
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Error parsing API response:', e);
+      throw new Error('Invalid API response format');
     }
 
-    console.log('Score submitted to global leaderboard');
+    if (!response.ok) {
+      throw new Error(`Failed to submit score: ${data.error || response.statusText}`);
+    }
+
+    console.log('Score submitted successfully:', data);
     submitButton.textContent = 'Saved Online!';
 
     // If successful, try to submit any pending scores
@@ -97,13 +108,18 @@ async function submitToLeaderboard(name, score) {
 
       for (const pendingScore of pendingScores) {
         try {
-          await fetch('/api/scores', {
+          const pendingResponse = await fetch('/api/scores', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(pendingScore),
           });
+          
+          if (!pendingResponse.ok) {
+            throw new Error('Failed to submit pending score');
+          }
+          
           successfulSubmissions.push(pendingScore);
         } catch (error) {
           console.error('Failed to submit pending score:', error);
@@ -170,15 +186,32 @@ async function updateLeaderboard() {
   showLocalScores(leaderboardDiv);
 
   try {
-    // Fetch global scores from Vercel API
-    const response = await fetch('/api/scores');
-    if (!response.ok) {
-      throw new Error('Failed to fetch scores');
+    console.log('Fetching global scores...');
+    const response = await fetch('/api/scores', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    const responseText = await response.text();
+    console.log('Raw API Response:', responseText);
+
+    let scores;
+    try {
+      scores = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Error parsing API response:', e);
+      throw new Error('Invalid API response format');
     }
 
-    const scores = await response.json();
+    if (!response.ok) {
+      throw new Error(`Failed to fetch scores: ${scores.error || response.statusText}`);
+    }
+
+    console.log('Received global scores:', scores);
     
-    if (scores.length > 0) {
+    if (scores && scores.length > 0) {
       // Add a separator between local and online scores
       const separatorDiv = document.createElement('div');
       separatorDiv.className = 'scores-separator';
@@ -193,10 +226,19 @@ async function updateLeaderboard() {
         `;
         leaderboardDiv.appendChild(scoreDiv);
       });
+    } else {
+      console.log('No global scores available');
+      const noScoresDiv = document.createElement('div');
+      noScoresDiv.className = 'scores-separator';
+      noScoresDiv.textContent = 'No Global Scores Yet';
+      leaderboardDiv.appendChild(noScoresDiv);
     }
   } catch (error) {
-    console.error('Failed to fetch online scores:', error);
-    // Don't show any error message since we already show local scores
+    console.error('Failed to fetch global scores:', error);
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.textContent = `Unable to load global scores: ${error.message}`;
+    leaderboardDiv.appendChild(errorDiv);
   }
 }
 

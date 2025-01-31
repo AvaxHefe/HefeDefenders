@@ -1,17 +1,7 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "*.html", "use": "@vercel/static" },
-    { "src": "*.css", "use": "@vercel/static" },
-    { "src": "js/*.js", "use": "@vercel/static" },
-    { "src": "assets/**/*", "use": "@vercel/static" },
-    { "src": "api/*.js", "use": "@vercel/node" }
-  ],
   "routes": [
     { "src": "/api/scores", "dest": "/api/scores.js" },
     { "src": "/(.*)", "dest": "/$1" }
-  ],
-  "env": {
-    "POSTGRES_URL": "REQUIRED - Add your Neon database connection URL here"
-  }
+  ]
 }
