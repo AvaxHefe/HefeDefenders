@@ -40,7 +40,7 @@ class ScoreManager {
         try {
             // Initialize database first
             try {
-                const response = await fetch('/api/init-db', {
+                const response = await fetch('https://hefe-defenders.vercel.app/api/init-db', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -176,7 +176,7 @@ class ScoreManager {
                             }
 
                             try {
-                                const response = await fetch('/api/nickname', {
+                                const response = await fetch('https://hefe-defenders.vercel.app/api/nickname', {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json'
@@ -354,7 +354,7 @@ class ScoreManager {
         try {
             console.log('Saving score for wallet:', this.userAddress);
             
-            const response = await fetch("/api/scores", {
+            const response = await fetch("https://hefe-defenders.vercel.app/api/scores", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -387,7 +387,7 @@ class ScoreManager {
             const leaderboardEl = document.getElementById('leaderboardScores');
             if (!leaderboardEl) return;
 
-            const response = await fetch("/api/leaderboard");
+            const response = await fetch("https://hefe-defenders.vercel.app/api/leaderboard");
             if (!response.ok) {
                 throw new Error('Failed to fetch leaderboard');
             }
