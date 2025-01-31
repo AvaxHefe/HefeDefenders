@@ -1,7 +1,17 @@
 {
   "version": 2,
+  "functions": {
+    "api/scores.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "routes": [
-    { "src": "/api/scores", "dest": "/api/scores.js" },
+    {
+      "src": "/api/scores",
+      "methods": ["GET", "POST", "OPTIONS"],
+      "dest": "/api/scores.js"
+    },
     { "src": "/(.*)", "dest": "/$1" }
   ]
 }
