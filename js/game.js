@@ -136,9 +136,23 @@ let keys = {
 // Audio setup
 const bgMusic = new Audio('assets/sounds/backgroundmusic.mp3');
 const laserSound = new Audio('assets/sounds/Lazer sound 1.wav');
-laserSound.volume = 0.15;
+
+// Configure background music
 bgMusic.loop = true;
 bgMusic.volume = 0.5;
+bgMusic.preload = 'auto';
+
+// Configure laser sound
+laserSound.volume = 0.15;
+laserSound.preload = 'auto';
+
+// Add event listener for when music is about to end
+bgMusic.addEventListener('timeupdate', () => {
+    // If we're within 0.5 seconds of the end, reset to start
+    if (bgMusic.currentTime > bgMusic.duration - 0.5) {
+        bgMusic.currentTime = 0;
+    }
+});
 
 // Initialize game systems
 document.addEventListener('DOMContentLoaded', () => {
