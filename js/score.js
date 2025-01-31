@@ -32,55 +32,7 @@ class ScoreManager {
   }
 }
 
-// Firebase Leaderboard Integration
-// Get Firebase config from environment variables or fallback to defaults
-const firebaseConfig = {
-  apiKey: "AIzaSyC9B_gA2K29bXbc4yKDolyCKFEft6eQss8",
-  authDomain: "hefe-s.firebaseapp.com",
-  projectId: "hefe-s",
-  storageBucket: "hefe-s.appspot.com",
-  messagingSenderId: "203193310179",
-  appId: "1:203193310179:web:bb1afaa4860100edd09ed6",
-  measurementId: "G-M1DMQCZBSH"
-};
-
-// Log Firebase initialization
-console.log('Initializing Firebase with project:', firebaseConfig.projectId);
-
-// Initialize Firebase with error handling
-let db;
-let isOnline = false;  // Start offline by default
-
-try {
-    // Initialize Firebase with modular SDK
-    const firebase = window.initFirebase(firebaseConfig);
-    db = firebase.db;
-    console.log('Firebase initialized');
-    
-    // Test database connection
-    console.log('Testing Firebase connection...');
-    const testQuery = firebase.query(
-        firebase.collection(db, 'scores'),
-        firebase.limit(1)
-    );
-    
-    firebase.getDocs(testQuery)
-        .then(snapshot => {
-            console.log('Successfully connected to Firebase leaderboard');
-            console.log('Current scores count:', snapshot.size);
-            isOnline = true;
-            updateLeaderboard();
-        })
-        .catch(error => {
-            console.error('Firebase connection test failed:', error);
-            console.log('Falling back to local scores');
-            isOnline = false;
-        });
-} catch (error) {
-    console.error('Firebase initialization failed:', error);
-    console.log('Operating in offline mode only');
-    isOnline = false;
-}
+// Offline storage handling
 let pendingScores = [];
 let localHighScores = [];
 
@@ -117,42 +69,57 @@ async function submitToLeaderboard(name, score) {
   // Always update local high scores first
   updateLocalHighScores(name, score);
   console.log('Local high scores updated');
-  
-  // Prepare score data
-  const scoreData = {
-    name: name,
-    score: score,
-    timestamp: new Date().toISOString(), // Use ISO string for consistency
-    submitted: new Date().toISOString()
-  };
 
-  // Attempt online submission with retries
-  if (db && isOnline) {
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        const scoresRef = firebase.collection(db, 'scores');
-        await firebase.addDoc(scoresRef, scoreData);
-        console.log('Score submitted to global leaderboard');
-        submitButton.textContent = 'Saved Online!';
-        isOnline = true;
-        break;
-      } catch (error) {
-        console.error(`Submission attempt ${4 - retries} failed:`, error);
-        retries--;
-        if (retries === 0) {
-          console.log('All submission attempts failed, saving locally');
-          isOnline = false;
-          pendingScores.push(scoreData);
-          localStorage.setItem('pendingScores', JSON.stringify(pendingScores));
-          submitButton.textContent = 'Saved Locally!';
-        }
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
-      }
+  try {
+    // Attempt to submit score to Vercel API
+    const response = await fetch('/api/scores', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name,
+        score,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to submit score');
     }
-  } else {
-    console.log('Offline mode: saving score locally');
-    pendingScores.push(scoreData);
+
+    console.log('Score submitted to global leaderboard');
+    submitButton.textContent = 'Saved Online!';
+
+    // If successful, try to submit any pending scores
+    if (pendingScores.length > 0) {
+      console.log('Attempting to submit pending scores...');
+      const successfulSubmissions = [];
+
+      for (const pendingScore of pendingScores) {
+        try {
+          await fetch('/api/scores', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(pendingScore),
+          });
+          successfulSubmissions.push(pendingScore);
+        } catch (error) {
+          console.error('Failed to submit pending score:', error);
+        }
+      }
+
+      // Remove successfully submitted scores from pending
+      pendingScores = pendingScores.filter(
+        score => !successfulSubmissions.includes(score)
+      );
+      localStorage.setItem('pendingScores', JSON.stringify(pendingScores));
+    }
+  } catch (error) {
+    console.error('Failed to submit score:', error);
+    // Store score locally for later submission
+    pendingScores.push({ name, score, timestamp: new Date().toISOString() });
     localStorage.setItem('pendingScores', JSON.stringify(pendingScores));
     submitButton.textContent = 'Saved Locally!';
   }
@@ -202,72 +169,36 @@ async function updateLeaderboard() {
   // Always show local scores first
   showLocalScores(leaderboardDiv);
 
-  // Only attempt to fetch online scores if we have a valid connection
-  if (db && isOnline) {
-    console.log('Attempting to fetch online scores...');
-    try {
-      console.log('Executing Firestore query...');
-      const scoresRef = firebase.collection(db, 'scores');
-      const q = firebase.query(
-        scoresRef,
-        firebase.orderBy('score', 'desc'),
-        firebase.limit(10)
-      );
-      const snapshot = await firebase.getDocs(q);
-      console.log('Query results:', snapshot);
-
-      if (!snapshot.empty) {
-        console.log('Found online scores:', snapshot.size);
-        // Add a separator between local and online scores
-        const separatorDiv = document.createElement('div');
-        separatorDiv.className = 'scores-separator';
-        separatorDiv.textContent = '🌐 Global Leaderboard 🌐';
-        leaderboardDiv.appendChild(separatorDiv);
-
-        const docs = snapshot.docs || [];
-        console.log('Processing docs:', docs.length);
-        
-        docs.forEach((doc, index) => {
-          try {
-            const data = doc.data();
-            console.log('Processing score:', data);
-            
-            const scoreDiv = document.createElement('div');
-            scoreDiv.innerHTML = `
-              <span>${index + 1}. ${data.name}</span>
-              <span>${data.score}</span>
-            `;
-            leaderboardDiv.appendChild(scoreDiv);
-          } catch (err) {
-            console.error('Error processing doc:', err, doc);
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch online scores:', error);
-      console.log('Error details:', {
-        code: error.code,
-        message: error.message,
-        stack: error.stack,
-        firestoreState: {
-          db: !!db,
-          isOnline,
-          methods: Object.keys(window.getFirestore)
-        }
-      });
-      isOnline = false;
-      
-      // Try to reconnect in the background
-      setTimeout(() => {
-        console.log('Attempting to reconnect to Firebase...');
-        updateLeaderboard();
-      }, 5000);
+  try {
+    // Fetch global scores from Vercel API
+    const response = await fetch('/api/scores');
+    if (!response.ok) {
+      throw new Error('Failed to fetch scores');
     }
+
+    const scores = await response.json();
+    
+    if (scores.length > 0) {
+      // Add a separator between local and online scores
+      const separatorDiv = document.createElement('div');
+      separatorDiv.className = 'scores-separator';
+      separatorDiv.textContent = '🌐 Global Leaderboard 🌐';
+      leaderboardDiv.appendChild(separatorDiv);
+
+      scores.forEach((score, index) => {
+        const scoreDiv = document.createElement('div');
+        scoreDiv.innerHTML = `
+          <span>${index + 1}. ${score.name}</span>
+          <span>${score.score}</span>
+        `;
+        leaderboardDiv.appendChild(scoreDiv);
+      });
+    }
+  } catch (error) {
+    console.error('Failed to fetch online scores:', error);
+    // Don't show any error message since we already show local scores
   }
 }
-
-// Initialize leaderboard on page load
-updateLeaderboard();
 
 // Initialize leaderboard on page load
 updateLeaderboard();

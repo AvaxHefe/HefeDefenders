@@ -11,13 +11,12 @@
     "game",
     "javascript",
     "canvas",
-    "space-shooter",
-    "firebase"
+    "space-shooter"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "firebase": "^10.7.0"
+    "@vercel/postgres": "^0.5.1"
   },
   "devDependencies": {
     "serve": "^14.0.0"
