@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' data: blob:">
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval';">
     <title>Hefe's Space Defenders</title>
     <link rel="icon" type="image/png" href="assets/sprites/hefeship.png">
     <link rel="stylesheet" href="style.css">
@@ -20,6 +20,10 @@
                 <span class="wallet-icon">👛</span> Connect Wallet
             </button>
             <div id="walletAddress" class="wallet-address"></div>
+            <div id="nicknameSection" class="hidden">
+                <input type="text" id="nicknameInput" placeholder="Enter nickname (3-20 chars)" maxlength="20" />
+                <button id="saveNickname">Save Nickname</button>
+            </div>
             <button id="startButton" class="hidden">Start Game</button>
             <div class="balance-display">
                 USDC Balance: <span id="usdcBalance">0.00</span>
