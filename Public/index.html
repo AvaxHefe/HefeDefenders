@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hefe's Space Defenders</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="startScreen" class="start-screen">
+            <h2>Hefe's Space Defenders</h2>
+            <button id="startButton">Start Game</button>
+        </div>
+        <div class="ui-overlay">
+            <div class="score-display">
+                <span>Score: <span id="currentScore">0</span></span>
+                <span>High Score: <span id="highScore">0</span></span>
+            </div>
+            <div class="wave-display">
+                <span>Wave: <span id="waveNumber">1</span></span>
+            </div>
+            <div class="lives-display">
+                <span>Lives: <span id="livesCount">5</span></span>
+            </div>
+            <button id="showLeaderboard" class="leaderboard-button">
+                <span class="trophy">🏆</span> Leaderboard
+            </button>
+        </div>
+        
+        <div id="gameOverScreen" class="game-over-screen hidden">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <div class="submit-score">
+                <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
+                <button id="submitScore">Submit Score</button>
+            </div>
+            <button id="restartGame">Play Again</button>
+        </div>
+
+        <div id="leaderboardModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🏆 Top Scores 🏆</h3>
+                    <button class="close-button">&times;</button>
+                </div>
+                <div id="leaderboardScores" class="leaderboard-scores">
+                    <!-- Scores will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/score.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

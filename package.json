@@ -1,0 +1,22 @@
+{
+  "name": "hefe-space-defenders",
+  "version": "1.0.0",
+  "description": "A retro-style space shooter game built with vanilla JavaScript",
+  "private": true,
+  "scripts": {
+    "start": "npx serve public",
+    "dev": "npx serve public"
+  },
+  "keywords": [
+    "game",
+    "javascript",
+    "canvas",
+    "space-shooter",
+    "firebase"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.0.0"
+  }
+}
