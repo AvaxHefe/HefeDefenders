@@ -1,327 +1,296 @@
 class ScoreManager {
-  constructor() {
-    this.currentScore = 0;
-    this.highScore = localStorage.getItem('hefeHighScore') || 0;
-    this.scoreDisplay = document.getElementById('currentScore');
-    this.highScoreDisplay = document.getElementById('highScore');
-    
-    this.updateDisplays();
-  }
-
-  addPoints(points) {
-    this.currentScore += points;
-    if (this.currentScore > this.highScore) {
-      this.highScore = this.currentScore;
-    }
-    this.updateDisplays();
-  }
-
-  updateDisplays() {
-    this.scoreDisplay.textContent = `Score: ${this.currentScore}`;
-    this.highScoreDisplay.textContent = `High Score: ${this.highScore}`;
-  }
-
-  saveHighScore() {
-    localStorage.setItem('hefeHighScore', this.highScore);
-    this.updateDisplays();
-  }
-
-  reset() {
-    this.currentScore = 0;
-    this.updateDisplays();
-  }
-}
-
-// Offline storage handling
-let pendingScores = [];
-let localHighScores = [];
-
-// Load saved data from localStorage
-try {
-  const savedPending = localStorage.getItem('pendingScores');
-  if (savedPending) {
-    pendingScores = JSON.parse(savedPending);
-  }
-  
-  const savedHighScores = localStorage.getItem('localHighScores');
-  if (savedHighScores) {
-    localHighScores = JSON.parse(savedHighScores);
-  }
-} catch (e) {
-  console.error('Error loading saved data:', e);
-}
-
-// Function to update local high scores
-function updateLocalHighScores(name, score) {
-  localHighScores.push({ name, score });
-  localHighScores.sort((a, b) => b.score - a.score);
-  localHighScores = localHighScores.slice(0, 10); // Keep top 10
-  localStorage.setItem('localHighScores', JSON.stringify(localHighScores));
-}
-
-// Get the base URL for API calls
-const API_BASE_URL = window.location.origin;
-
-async function submitToLeaderboard(name, score) {
-  const submitButton = document.getElementById('submitScore');
-  const originalText = submitButton.textContent;
-  
-  submitButton.textContent = 'Saving...';
-  submitButton.disabled = true;
-
-  // Always update local high scores first
-  updateLocalHighScores(name, score);
-  console.log('Local high scores updated');
-
-  try {
-    console.log('Submitting score to API:', { name, score });
-    const response = await fetch(`${API_BASE_URL}/api/scores`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name,
-        score,
-      }),
-    });
-
-    const responseText = await response.text();
-    console.log('Raw API Response:', responseText);
-
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      console.error('Error parsing API response:', e);
-      throw new Error('Invalid API response format');
+    constructor() {
+        this.currentScore = 0;
+        this.highScore = localStorage.getItem('highScore') || 0;
+        this.updateScoreDisplay();
+        
+        // Configuration
+        this.config = {
+            chainId: 43114, // Avalanche C-Chain
+            usdcContract: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
+            merchantWallet: "0x18cd0B25309Df2e9c207f4417C5eaa7A7eaA19B8",
+            rpcUrl: "https://api.avax.network/ext/bc/C/rpc"
+        };
+        
+        this.initializeWeb3();
     }
 
-    if (!response.ok) {
-      throw new Error(`Failed to submit score: ${data.error?.message || response.statusText}`);
-    }
-
-    console.log('Score submitted successfully:', data);
-    submitButton.textContent = 'Saved Online!';
-
-    // If successful, try to submit any pending scores
-    if (pendingScores.length > 0) {
-      console.log('Attempting to submit pending scores...');
-      const successfulSubmissions = [];
-
-      for (const pendingScore of pendingScores) {
+    async initializeWeb3() {
         try {
-          const pendingResponse = await fetch(`${API_BASE_URL}/api/scores`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(pendingScore),
-          });
-          
-          if (!pendingResponse.ok) {
-            throw new Error('Failed to submit pending score');
-          }
-          
-          successfulSubmissions.push(pendingScore);
+            // Setup UI elements
+            const connectWalletBtn = document.getElementById('connectWallet');
+            const walletAddress = document.getElementById('walletAddress');
+            const startButton = document.getElementById('startButton');
+            const balanceDisplay = document.getElementById('usdcBalance');
+            const buyLivesBtn = document.getElementById('buyLives');
+            const transactionStatus = document.getElementById('transactionStatus');
+            
+            if (!connectWalletBtn || !walletAddress || !startButton || !balanceDisplay) {
+                console.error('Required UI elements not found');
+                return;
+            }
+
+            // Setup wallet connection
+            connectWalletBtn.addEventListener('click', async () => {
+                try {
+                    connectWalletBtn.disabled = true;
+                    connectWalletBtn.textContent = 'Connecting...';
+                    
+                    // Check if Core Wallet or MetaMask is installed
+                    if (!window.ethereum) {
+                        throw new Error('Please install Core Wallet or MetaMask');
+                    }
+
+                    // Request account access
+                    const accounts = await window.ethereum.request({ 
+                        method: 'eth_requestAccounts' 
+                    });
+
+                    if (!accounts || accounts.length === 0) {
+                        throw new Error('No accounts found');
+                    }
+
+                    // Switch to Avalanche network
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: `0x${this.config.chainId.toString(16)}` }],
+                        });
+                    } catch (switchError) {
+                        // Add the network if it doesn't exist
+                        if (switchError.code === 4902) {
+                            try {
+                                await window.ethereum.request({
+                                    method: 'wallet_addEthereumChain',
+                                    params: [{
+                                        chainId: `0x${this.config.chainId.toString(16)}`,
+                                        chainName: 'Avalanche C-Chain',
+                                        nativeCurrency: {
+                                            name: 'AVAX',
+                                            symbol: 'AVAX',
+                                            decimals: 18
+                                        },
+                                        rpcUrls: [this.config.rpcUrl],
+                                        blockExplorerUrls: ['https://snowtrace.io/']
+                                    }]
+                                });
+                            } catch (addError) {
+                                throw new Error('Failed to add Avalanche network: ' + addError.message);
+                            }
+                        } else {
+                            throw new Error('Failed to switch to Avalanche network: ' + switchError.message);
+                        }
+                    }
+
+                    const address = accounts[0];
+                    
+                    // Initialize provider and contract
+                    const provider = new ethers.providers.Web3Provider(window.ethereum);
+                    await provider.ready; // Ensure provider is ready
+                    
+                    const signer = provider.getSigner();
+                    this.usdcContract = new ethers.Contract(
+                        this.config.usdcContract,
+                        window.USDC_ABI,
+                        signer
+                    );
+
+                    this.walletConnected = true;
+                    this.userAddress = address;
+                    this.signer = signer;
+                    
+                    // Update UI
+                    walletAddress.textContent = `${address.slice(0,6)}...${address.slice(-4)}`;
+                    walletAddress.style.display = 'block';
+                    connectWalletBtn.style.display = 'none';
+                    startButton.classList.remove('hidden');
+                    if (buyLivesBtn) buyLivesBtn.disabled = false;
+                    
+                    // Get and display USDC balance
+                    await this.updateUSDCBalance(balanceDisplay);
+                    
+                    // Initialize with 1 life
+                    window.lives = 1;
+                    localStorage.setItem('currentLives', window.lives);
+                    if (window.livesDisplay) {
+                        window.livesDisplay.textContent = window.lives;
+                    }
+                    
+                    console.log('Wallet connected successfully:', address);
+                    
+                } catch (error) {
+                    console.error('Wallet connection failed:', error);
+                    alert(error.message || 'Failed to connect wallet. Please try again.');
+                } finally {
+                    connectWalletBtn.disabled = false;
+                    connectWalletBtn.textContent = 'Connect Wallet';
+                }
+            });
+
+            // Setup buy lives button
+            if (buyLivesBtn) {
+                buyLivesBtn.addEventListener('click', async () => {
+                    if (!this.walletConnected || !this.usdcContract) {
+                        alert('Please connect your wallet first');
+                        return;
+                    }
+                    
+                    buyLivesBtn.disabled = true;
+                    buyLivesBtn.textContent = 'Processing...';
+                    if (transactionStatus) {
+                        transactionStatus.textContent = 'Transaction pending...';
+                        transactionStatus.className = 'transaction-status pending';
+                    }
+                    
+                    try {
+                        const price = ethers.utils.parseUnits("0.25", 6); // USDC has 6 decimals
+                        
+                        // Check USDC balance
+                        const balance = await this.usdcContract.balanceOf(this.userAddress);
+                        if (balance.lt(price)) {
+                            throw new Error('Insufficient USDC balance');
+                        }
+                        
+                        // Send transaction
+                        const tx = await this.usdcContract.transfer(this.config.merchantWallet, price);
+                        if (transactionStatus) {
+                            transactionStatus.textContent = 'Confirming transaction...';
+                        }
+                        
+                        await tx.wait();
+                        
+                        // Update lives and UI
+                        window.lives = (parseInt(localStorage.getItem('currentLives')) || 0) + 5;
+                        localStorage.setItem('currentLives', window.lives);
+                        if (window.livesDisplay) {
+                            window.livesDisplay.textContent = window.lives;
+                        }
+                        
+                        if (transactionStatus) {
+                            transactionStatus.textContent = 'Purchase successful!';
+                            transactionStatus.className = 'transaction-status success';
+                        }
+                        
+                        // Update USDC balance
+                        await this.updateUSDCBalance(balanceDisplay);
+                        
+                    } catch (error) {
+                        console.error('Purchase failed:', error);
+                        if (transactionStatus) {
+                            transactionStatus.textContent = `Error: ${error.message}`;
+                            transactionStatus.className = 'transaction-status error';
+                        }
+                    } finally {
+                        buyLivesBtn.textContent = 'Buy 5 Lives (0.25 USDC)';
+                        buyLivesBtn.disabled = false;
+                    }
+                });
+            }
+            
         } catch (error) {
-          console.error('Failed to submit pending score:', error);
+            console.error('Web3 initialization failed:', error);
         }
-      }
-
-      // Remove successfully submitted scores from pending
-      pendingScores = pendingScores.filter(
-        score => !successfulSubmissions.includes(score)
-      );
-      localStorage.setItem('pendingScores', JSON.stringify(pendingScores));
     }
-  } catch (error) {
-    console.error('Failed to submit score:', error);
-    // Store score locally for later submission
-    pendingScores.push({ name, score, timestamp: new Date().toISOString() });
-    localStorage.setItem('pendingScores', JSON.stringify(pendingScores));
-    submitButton.textContent = 'Saved Locally!';
-  }
 
-  // Update the leaderboard display
-  await updateLeaderboard();
-  
-  // Reset button state
-  setTimeout(() => {
-    submitButton.textContent = originalText;
-    submitButton.disabled = false;
-  }, 2000);
+    async updateUSDCBalance(balanceDisplay) {
+        try {
+            if (!this.usdcContract || !this.userAddress) {
+                balanceDisplay.textContent = '0.00';
+                return;
+            }
+            
+            const balance = await this.usdcContract.balanceOf(this.userAddress);
+            const formattedBalance = ethers.utils.formatUnits(balance, 6); // USDC has 6 decimals
+            balanceDisplay.textContent = parseFloat(formattedBalance).toFixed(2);
+        } catch (error) {
+            console.error('Failed to update USDC balance:', error);
+            balanceDisplay.textContent = 'Error';
+        }
+    }
+
+    addPoints(points) {
+        this.currentScore += points;
+        if (this.currentScore > this.highScore) {
+            this.highScore = this.currentScore;
+            localStorage.setItem('highScore', this.highScore);
+        }
+        this.updateScoreDisplay();
+    }
+
+    updateScoreDisplay() {
+        const currentScoreEl = document.getElementById('currentScore');
+        const highScoreEl = document.getElementById('highScore');
+        
+        if (currentScoreEl && highScoreEl) {
+            currentScoreEl.textContent = this.currentScore;
+            highScoreEl.textContent = this.highScore;
+        }
+    }
+
+    async saveHighScore() {
+        if (!this.walletConnected) {
+            console.log('Wallet not connected, score will not be saved on-chain');
+            return;
+        }
+        
+        try {
+            const response = await fetch("/api/scores", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    walletAddress: this.userAddress,
+                    score: this.currentScore
+                })
+            });
+
+            if (!response.ok) throw new Error('Score submission failed');
+            
+            const result = await response.json();
+            console.log('Score saved:', result);
+            
+            // Update leaderboard
+            await this.updateLeaderboard();
+            
+        } catch (error) {
+            console.error('Failed to save score:', error);
+        }
+    }
+
+    async updateLeaderboard() {
+        try {
+            const response = await fetch("/api/leaderboard");
+            if (!response.ok) throw new Error('Failed to fetch leaderboard');
+            
+            const data = await response.json();
+            const leaderboardEl = document.getElementById('leaderboardScores');
+            
+            if (leaderboardEl) {
+                // Get top 10 scores
+                const topScores = data.scores.slice(0, 10);
+                
+                // Medal emojis for top 3
+                const medals = ['🥇', '🥈', '🥉'];
+                
+                leaderboardEl.innerHTML = topScores.map((score, index) => {
+                    const rankDisplay = index < 3 ? medals[index] : `#${index + 1}`;
+                    const addressDisplay = score.walletAddress.slice(0, 6) + '...' + score.walletAddress.slice(-4);
+                    
+                    return `
+                        <div class="leaderboard-entry ${index < 3 ? 'top-three' : ''}">
+                            <span class="rank">${rankDisplay}</span>
+                            <span class="address">${addressDisplay}</span>
+                            <span class="score">${score.score.toLocaleString()}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+        } catch (error) {
+            console.error('Failed to update leaderboard:', error);
+            const leaderboardEl = document.getElementById('leaderboardScores');
+            if (leaderboardEl) {
+                leaderboardEl.innerHTML = '<div class="error-message">Failed to load leaderboard</div>';
+            }
+        }
+    }
 }
-
-function showLocalScores(leaderboardDiv) {
-  const headerDiv = document.createElement('div');
-  headerDiv.className = 'leaderboard-header';
-  headerDiv.textContent = 'Local High Scores';
-  leaderboardDiv.appendChild(headerDiv);
-
-  if (localHighScores.length > 0) {
-    localHighScores.forEach((score, index) => {
-      const scoreDiv = document.createElement('div');
-      scoreDiv.innerHTML = `
-        <span>${index + 1}. ${score.name}</span>
-        <span>${score.score}</span>
-      `;
-      leaderboardDiv.appendChild(scoreDiv);
-    });
-  } else {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'offline-message';
-    messageDiv.textContent = 'No local scores yet!';
-    leaderboardDiv.appendChild(messageDiv);
-  }
-}
-
-async function updateLeaderboard() {
-  console.log('Updating leaderboard...');
-  const leaderboardDiv = document.getElementById('leaderboardScores');
-  if (!leaderboardDiv) {
-    console.error('Leaderboard div not found!');
-    return;
-  }
-  leaderboardDiv.innerHTML = '';
-
-  // Always show local scores first
-  showLocalScores(leaderboardDiv);
-
-  try {
-    console.log('Fetching global scores...');
-    const response = await fetch(`${API_BASE_URL}/api/scores`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-
-    const responseText = await response.text();
-    console.log('Raw API Response:', responseText);
-
-    let scores;
-    try {
-      scores = JSON.parse(responseText);
-    } catch (e) {
-      console.error('Error parsing API response:', e);
-      throw new Error('Invalid API response format');
-    }
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch scores: ${scores.error?.message || response.statusText}`);
-    }
-
-    console.log('Received global scores:', scores);
-    
-    if (scores && scores.length > 0) {
-      // Add a separator between local and online scores
-      const separatorDiv = document.createElement('div');
-      separatorDiv.className = 'scores-separator';
-      separatorDiv.textContent = '🌐 Global Leaderboard 🌐';
-      leaderboardDiv.appendChild(separatorDiv);
-
-      scores.forEach((score, index) => {
-        const scoreDiv = document.createElement('div');
-        scoreDiv.innerHTML = `
-          <span>${index + 1}. ${score.name}</span>
-          <span>${score.score}</span>
-        `;
-        leaderboardDiv.appendChild(scoreDiv);
-      });
-    } else {
-      console.log('No global scores available');
-      const noScoresDiv = document.createElement('div');
-      noScoresDiv.className = 'scores-separator';
-      noScoresDiv.textContent = 'No Global Scores Yet';
-      leaderboardDiv.appendChild(noScoresDiv);
-    }
-  } catch (error) {
-    console.error('Failed to fetch global scores:', error);
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'error-message';
-    errorDiv.textContent = `Unable to load global scores: ${error.message}`;
-    leaderboardDiv.appendChild(errorDiv);
-  }
-}
-
-// Initialize leaderboard on page load
-updateLeaderboard();
-
-// Setup game over screen handlers
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('Setting up game over screen handlers...');
-  
-  const submitButton = document.getElementById('submitScore');
-  const restartButton = document.getElementById('restartGame');
-  const gameOverScreen = document.getElementById('gameOverScreen');
-  const nameInput = document.getElementById('playerName');
-  
-  if (!submitButton || !restartButton || !gameOverScreen || !nameInput) {
-    console.error('Required game over elements not found:', {
-      submit: !!submitButton,
-      restart: !!restartButton,
-      screen: !!gameOverScreen,
-      input: !!nameInput
-    });
-    return;
-  }
-
-  submitButton.addEventListener('click', async () => {
-    const name = nameInput.value.trim();
-    if (name) {
-      await submitToLeaderboard(name, scoreManager.currentScore);
-      nameInput.value = '';
-      gameOverScreen.classList.add('hidden');
-    }
-  });
-
-  restartButton.addEventListener('click', () => {
-    gameOverScreen.classList.add('hidden');
-    location.reload();
-  });
-});
-
-// Setup all UI event listeners after DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('Setting up leaderboard controls...');
-  
-  const showLeaderboardBtn = document.getElementById('showLeaderboard');
-  const leaderboardModal = document.getElementById('leaderboardModal');
-  const closeButton = document.querySelector('.close-button');
-  
-  if (!showLeaderboardBtn || !leaderboardModal || !closeButton) {
-    console.error('Required leaderboard elements not found:', {
-      button: !!showLeaderboardBtn,
-      modal: !!leaderboardModal,
-      closeBtn: !!closeButton
-    });
-    return;
-  }
-
-  showLeaderboardBtn.addEventListener('click', (e) => {
-    console.log('Leaderboard button clicked');
-    e.stopPropagation();
-    leaderboardModal.classList.remove('hidden');
-    updateLeaderboard();
-  });
-
-  closeButton.addEventListener('click', () => {
-    console.log('Close button clicked');
-    leaderboardModal.classList.add('hidden');
-  });
-
-  leaderboardModal.addEventListener('click', (e) => {
-    if (e.target.id === 'leaderboardModal') {
-      console.log('Clicked outside modal');
-      leaderboardModal.classList.add('hidden');
-    }
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !leaderboardModal.classList.contains('hidden')) {
-      console.log('Escape pressed, closing modal');
-      leaderboardModal.classList.add('hidden');
-    }
-  });
-});

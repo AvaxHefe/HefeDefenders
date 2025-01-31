@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "start": "npx serve",
-    "dev": "npx serve"
+    "dev": "npx serve",
+    "build": "mkdir -p public && cp -r index.html style.css js assets public/ && cp favicon.ico public/"
   },
   "keywords": [
     "game",
@@ -16,7 +17,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@thirdweb-dev/sdk": "^4.0.23",
+    "@thirdweb-dev/react": "^4.1.17",
     "@vercel/postgres": "^0.5.1",
+    "ethers": "^5.7.2",
     "serve": "^14.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

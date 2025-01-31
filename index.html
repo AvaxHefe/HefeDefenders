@@ -6,32 +6,23 @@
     <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:">
     <title>Hefe's Space Defenders</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Firebase App (the core Firebase SDK) -->
-    <script type="module">
-      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-      import { getFirestore, collection, getDocs, addDoc, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
-
-      window.initFirebase = (config) => {
-        const app = initializeApp(config);
-        const db = getFirestore(app);
-        return {
-          db,
-          collection: collection,
-          getDocs: getDocs,
-          addDoc: addDoc,
-          query: query,
-          orderBy: orderBy,
-          limit: limit
-        };
-      };
-    </script>
+    <!-- Web3 Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 </head>
 <body>
     <div class="game-container">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
         <div id="startScreen" class="start-screen">
             <h2>Hefe's Space Defenders</h2>
-            <button id="startButton">Start Game</button>
+            <p class="connect-prompt">Connect your wallet to start playing!</p>
+            <button id="connectWallet" class="wallet-button">
+                <span class="wallet-icon">👛</span> Connect Wallet
+            </button>
+            <div id="walletAddress" class="wallet-address"></div>
+            <button id="startButton" class="hidden">Start Game</button>
+            <div class="balance-display">
+                USDC Balance: <span id="usdcBalance">0.00</span>
+            </div>
         </div>
         <div class="ui-overlay">
             <div class="score-display">
@@ -42,7 +33,7 @@
                 <span>Wave: <span id="waveNumber">1</span></span>
             </div>
             <div class="lives-display">
-                <span>Lives: <span id="livesCount">5</span></span>
+                <span>Lives: <span id="livesCount">1</span></span>
             </div>
             <button id="showLeaderboard" class="leaderboard-button">
                 <span class="trophy">🏆</span> Leaderboard
@@ -53,8 +44,14 @@
             <h2>Game Over!</h2>
             <p>Final Score: <span id="finalScore">0</span></p>
             <div class="submit-score">
-                <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
-                <button id="submitScore">Submit Score</button>
+                <div class="wallet-section">
+                    <div class="transaction-status" id="transactionStatus"></div>
+                </div>
+                <div class="purchase-section">
+                    <button id="buyLives" class="buy-lives">
+                        Buy 5 Lives (0.25 USDC)
+                    </button>
+                </div>
             </div>
             <button id="restartGame">Play Again</button>
         </div>
@@ -72,6 +69,21 @@
         </div>
     </div>
 
+    <!-- USDC Contract ABI -->
+    <script>
+        window.USDC_ABI = [
+            "function balanceOf(address owner) view returns (uint256)",
+            "function transfer(address to, uint256 amount) returns (bool)"
+        ];
+    </script>
+
+    <!-- Game Scripts -->
+    <script>
+        // Prevent Web3 provider conflicts
+        if (typeof window.ethereum !== 'undefined') {
+            window.ethereum.autoRefreshOnNetworkChange = false;
+        }
+    </script>
     <script src="js/score.js"></script>
     <script src="js/game.js"></script>
 </body>

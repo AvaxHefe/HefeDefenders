@@ -8,6 +8,9 @@ class Player {
         this.bullets = [];
         this.sprite = new Image();
         this.sprite.src = 'assets/sprites/hefeship.png';
+        this.lastShotTime = 0;
+        this.shootCooldown = 200; // 200ms cooldown
+        this.isSpaceHeld = false;
     }
 
     move(direction) {
@@ -15,7 +18,19 @@ class Player {
         if (direction === 'right' && this.x < 760) this.x += this.speed;
     }
 
+    canShoot() {
+        const now = Date.now();
+        // If space is being held, apply cooldown
+        if (this.isSpaceHeld) {
+            return now - this.lastShotTime >= this.shootCooldown;
+        }
+        // If space was just pressed (not held), allow immediate shot
+        return true;
+    }
+
     shoot() {
+        if (!this.canShoot()) return;
+        
         this.bullets.push({
             x: this.x + this.width/2 - 2,
             y: this.y,
@@ -23,6 +38,10 @@ class Player {
             height: 10,
             speed: -8
         });
+        
+        this.lastShotTime = Date.now();
+        laserSound.currentTime = 0;
+        laserSound.play().catch(console.error);
     }
 }
 
@@ -36,27 +55,21 @@ class EnemyWave {
     }
 
     spawnWave() {
-        // Calculate rows (start with 3, max 5)
-        const extraRows = Math.min(Math.floor((this.waveNumber - 1) / 5), 2); // Max 2 extra rows
-        const rows = Math.min(3 + extraRows, 5); // Ensure total rows never exceeds 5
+        const extraRows = Math.min(Math.floor((this.waveNumber - 1) / 5), 2);
+        const rows = Math.min(3 + extraRows, 5);
         const cols = 12 + Math.min(this.waveNumber - 1, 4);
-        
-        // Decrease spacing as waves progress to fit more enemies
         const spacing = Math.max(40, 50 - (this.waveNumber * 2));
-        
-        // Increase speed with each wave
         this.speed = 2 + Math.min(this.waveNumber * 0.5, 4);
         
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols; col++) {
                 this.enemies.push({
                     x: col * spacing + 30,
-                    y: row * spacing + 100 + this.yOffset, // Moved down by 50px
+                    y: row * spacing + 100 + this.yOffset,
                     width: 30,
                     height: 25,
                     type: Math.floor(Math.random() * 4) + 1,
                     alive: true,
-                    // Add points multiplier based on wave
                     pointsMultiplier: 1 + (this.waveNumber * 0.5)
                 });
             }
@@ -78,52 +91,92 @@ class EnemyWave {
     }
 }
 
-// Game variables
-let canvas, ctx, scoreManager, player, currentWave;
+// Game state
+let canvas, ctx;
+window.scoreManager = null;
+let player = null;
+let currentWave = null;
 let gameActive = false;
-let lives = 5;
-let livesDisplay, waveDisplay;
+window.lives = 1;
+window.livesDisplay = null;
+let waveDisplay = null;
 let keys = {
     ArrowLeft: false,
-    ArrowRight: false
+    ArrowRight: false,
+    KeyA: false,
+    KeyD: false,
+    Space: false
 };
+
+// Audio setup
+const bgMusic = new Audio('assets/sounds/backgroundmusic.mp3');
+const laserSound = new Audio('assets/sounds/Lazer sound 1.wav');
+laserSound.volume = 0.15;
+bgMusic.loop = true;
+bgMusic.volume = 0.5;
 
 // Initialize game systems
 document.addEventListener('DOMContentLoaded', () => {
     try {
         console.log('Initializing game...');
+        
+        // Initialize canvas
         canvas = document.getElementById('gameCanvas');
-        if (!canvas) {
-            throw new Error('Canvas element not found');
-        }
+        if (!canvas) throw new Error('Canvas element not found');
         
         ctx = canvas.getContext('2d');
-        if (!ctx) {
-            throw new Error('Could not get canvas context');
-        }
+        if (!ctx) throw new Error('Could not get canvas context');
         
         console.log('Canvas initialized');
         
-        scoreManager = new ScoreManager();
+        // Initialize score manager
+        window.scoreManager = new ScoreManager();
         console.log('Score manager initialized');
         
-        livesDisplay = document.getElementById('livesCount');
-        if (!livesDisplay) {
-            throw new Error('Lives display element not found');
-        }
+        // Initialize UI elements
+        window.livesDisplay = document.getElementById('livesCount');
+        if (!window.livesDisplay) throw new Error('Lives display element not found');
 
         waveDisplay = document.getElementById('waveNumber');
-        if (!waveDisplay) {
-            throw new Error('Wave display element not found');
-        }
+        if (!waveDisplay) throw new Error('Wave display element not found');
 
         // Initialize start button
         const startButton = document.getElementById('startButton');
-        if (!startButton) {
-            throw new Error('Start button not found');
+        if (!startButton) throw new Error('Start button not found');
+        
+        startButton.addEventListener('click', () => {
+            if (!window.scoreManager.walletConnected) {
+                alert('Please connect your wallet to start the game');
+                return;
+            }
+            startGame();
+        });
+        
+        // Initialize restart button
+        const restartButton = document.getElementById('restartGame');
+        if (restartButton) {
+            restartButton.addEventListener('click', () => {
+                document.getElementById('gameOverScreen').classList.add('hidden');
+                startGame();
+            });
         }
 
-        startButton.addEventListener('click', startGame);
+        // Initialize leaderboard button
+        const leaderboardBtn = document.getElementById('showLeaderboard');
+        const leaderboardModal = document.getElementById('leaderboardModal');
+        const closeBtn = document.querySelector('.close-button');
+        
+        if (leaderboardBtn && leaderboardModal && closeBtn) {
+            leaderboardBtn.addEventListener('click', () => {
+                leaderboardModal.classList.remove('hidden');
+                window.scoreManager.updateLeaderboard();
+            });
+            
+            closeBtn.addEventListener('click', () => {
+                leaderboardModal.classList.add('hidden');
+            });
+        }
+
         console.log('Game elements initialized');
         
     } catch (error) {
@@ -138,14 +191,20 @@ function startGame() {
     // Initialize game objects
     player = new Player();
     currentWave = new EnemyWave(1);
-    currentWave.spawnWave(); // Spawn initial wave
-    lives = 5;
-    livesDisplay.textContent = lives;
+    currentWave.spawnWave();
+    
+    // Get stored lives or use default
+    const storedLives = localStorage.getItem('currentLives');
+    window.lives = storedLives ? parseInt(storedLives) : 1;
+    window.livesDisplay.textContent = window.lives;
     waveDisplay.textContent = '1';
     gameActive = true;
     
-    // Log initial wave info
-    console.log('Starting Wave 1. Rows: 3');
+    // Reset score
+    if (window.scoreManager) {
+        window.scoreManager.currentScore = 0;
+        window.scoreManager.updateScoreDisplay();
+    }
     
     // Start background music
     bgMusic.play().catch(console.error);
@@ -157,34 +216,45 @@ function startGame() {
     initializeControls();
 }
 
-// Audio elements
-const bgMusic = new Audio('assets/sounds/backgroundmusic.mp3');
-const laserSound = new Audio('assets/sounds/Lazer sound 1.wav');
-laserSound.volume = 0.15;  // Set laser sound to 15%
-bgMusic.loop = true;
-bgMusic.volume = 0.5;
-
 function initializeControls() {
     document.addEventListener('keydown', (e) => {
         if (!gameActive) return;
         
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-            keys[e.key] = true;
-        }
-        if (e.key === ' ') {
-            player.shoot();
-            laserSound.currentTime = 0;
-            laserSound.play().catch(console.error);
-        }
-        if (e.key.toLowerCase() === 'm') {
-            bgMusic.muted = !bgMusic.muted;
-            laserSound.muted = !laserSound.muted;
+        switch(e.code) {
+            case 'ArrowLeft':
+            case 'KeyA':
+                keys[e.code] = true;
+                break;
+            case 'ArrowRight':
+            case 'KeyD':
+                keys[e.code] = true;
+                break;
+            case 'Space':
+                if (!keys.Space) { // Only shoot on initial press
+                    player.shoot();
+                }
+                keys.Space = true;
+                player.isSpaceHeld = true;
+                break;
+            case 'KeyM':
+                bgMusic.muted = !bgMusic.muted;
+                laserSound.muted = !laserSound.muted;
+                break;
         }
     });
 
     document.addEventListener('keyup', (e) => {
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-            keys[e.key] = false;
+        switch(e.code) {
+            case 'ArrowLeft':
+            case 'KeyA':
+            case 'ArrowRight':
+            case 'KeyD':
+                keys[e.code] = false;
+                break;
+            case 'Space':
+                keys.Space = false;
+                player.isSpaceHeld = false;
+                break;
         }
     });
 }
@@ -195,8 +265,9 @@ function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Handle player movement
-    if (keys.ArrowLeft) player.move('left');
-    if (keys.ArrowRight) player.move('right');
+    if (keys.ArrowLeft || keys.KeyA) player.move('left');
+    if (keys.ArrowRight || keys.KeyD) player.move('right');
+    if (keys.Space && player.isSpaceHeld) player.shoot();
 
     // Draw player
     if (player.sprite.complete) {
@@ -228,7 +299,7 @@ function gameLoop() {
                 enemy.alive = false;
                 player.bullets.splice(bulletIndex, 1);
                 const points = Math.floor(enemy.type * 100 * enemy.pointsMultiplier);
-                scoreManager.addPoints(points);
+                window.scoreManager.addPoints(points);
             }
         });
 
@@ -249,34 +320,32 @@ function gameLoop() {
         const nextWaveNumber = currentWave.waveNumber + 1;
         waveDisplay.textContent = nextWaveNumber;
         currentWave = new EnemyWave(nextWaveNumber);
-        currentWave.spawnWave(); // Respawn with new wave number
-        
-        // Log wave info for debugging
-        const extraRows = Math.min(Math.floor((nextWaveNumber - 1) / 5), 2);
-        const totalRows = Math.min(3 + extraRows, 5);
-        console.log(`Wave ${nextWaveNumber} started. Rows: ${totalRows} (max 5), Extra rows: ${extraRows}`);
+        currentWave.spawnWave();
     }
 
     // Check if enemies reached bottom
     currentWave.enemies.forEach((enemy, index) => {
-        if (enemy.alive && enemy.y + enemy.height >= canvas.height - 100) { // Adjusted to match new spawn height
-            lives--;
-            livesDisplay.textContent = lives;
+        if (enemy.alive && enemy.y + enemy.height >= canvas.height - 100) {
+            window.lives = Math.max(0, window.lives - 1); // Prevent negative lives
+            window.livesDisplay.textContent = window.lives;
+            localStorage.setItem('currentLives', window.lives);
             enemy.alive = false;
             currentWave.enemies.splice(index, 1);
-            if (lives <= 0) {
+            
+            if (window.lives <= 0) {
                 gameActive = false;
-                scoreManager.saveHighScore();
+                if (window.scoreManager) {
+                    window.scoreManager.saveHighScore();
+                }
                 const gameOverScreen = document.getElementById('gameOverScreen');
                 const finalScoreSpan = document.getElementById('finalScore');
-                finalScoreSpan.textContent = scoreManager.currentScore;
+                if (finalScoreSpan) {
+                    finalScoreSpan.textContent = window.scoreManager.currentScore;
+                }
                 gameOverScreen.classList.remove('hidden');
             }
         }
     });
-
-    // Debug info
-    console.log(`Active enemies: ${currentWave.enemies.length}`);
 
     requestAnimationFrame(gameLoop);
 }

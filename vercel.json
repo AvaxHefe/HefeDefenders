@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
   "routes": [
     {
       "src": "/api/scores",
@@ -12,8 +14,26 @@
       "continue": true
     },
     {
+      "src": "/api/leaderboard",
+      "methods": ["GET", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+      },
+      "continue": true
+    },
+    {
       "src": "/(.*)",
       "dest": "/$1"
     }
-  ]
+  ],
+  "env": {
+    "POSTGRES_URL": "@postgres-url"
+  },
+  "build": {
+    "env": {
+      "POSTGRES_URL": "@postgres-url"
+    }
+  }
 }

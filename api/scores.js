@@ -1,107 +1,88 @@
 import { sql } from '@vercel/postgres';
 
-export const config = {
-  runtime: 'edge',
-  regions: ['iad1']  // US East (N. Virginia)
-};
+// Simple rate limiting
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 5; // 5 requests per minute
+const rateLimitMap = new Map();
 
-export default async function handler(req) {
-  try {
-    // Parse request
-    const method = req.method;
-    const url = new URL(req.url);
+function isRateLimited(walletAddress) {
+  const now = Date.now();
+  const userRequests = rateLimitMap.get(walletAddress) || [];
+  
+  // Clean up old requests
+  const recentRequests = userRequests.filter(time => now - time < RATE_LIMIT_WINDOW);
+  rateLimitMap.set(walletAddress, recentRequests);
+  
+  return recentRequests.length >= RATE_LIMIT_MAX;
+}
 
-    // Prepare response headers
-    const headers = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Content-Type': 'application/json'
-    };
+export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Handle CORS preflight
-    if (method === 'OPTIONS') {
-      return new Response(null, { 
-        status: 204, 
-        headers 
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method === 'POST') {
+    try {
+      const { walletAddress, score } = req.body;
+
+      // Input validation
+      if (!walletAddress || typeof walletAddress !== 'string' || !walletAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+        return res.status(400).json({ error: 'Invalid wallet address' });
+      }
+
+      if (!score || typeof score !== 'number' || score < 0) {
+        return res.status(400).json({ error: 'Invalid score' });
+      }
+
+      // Check rate limit
+      if (isRateLimited(walletAddress)) {
+        return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+      }
+
+      // Add request to rate limit tracking
+      const userRequests = rateLimitMap.get(walletAddress) || [];
+      userRequests.push(Date.now());
+      rateLimitMap.set(walletAddress, userRequests);
+
+      // Upsert score into leaderboard
+      const result = await sql`
+        INSERT INTO leaderboard (wallet_address, score, last_updated)
+        VALUES (${walletAddress}, ${score}, NOW())
+        ON CONFLICT (wallet_address) 
+        DO UPDATE SET 
+          score = GREATEST(leaderboard.score, ${score}),
+          last_updated = NOW()
+        RETURNING score
+      `;
+      
+      const updatedScore = result.rows[0].score;
+      
+      res.status(200).json({ 
+        success: true,
+        score: updatedScore,
+        message: updatedScore > score ? 'Previous high score retained' : 'New high score recorded'
       });
-    }
-
-    // Log request details
-    console.log('API Request:', {
-      method,
-      url: url.toString(),
-      headers: Object.fromEntries(req.headers)
-    });
-
-    if (method === 'GET') {
-      const result = await sql`
-        SELECT name, score, submitted_at
-        FROM scores
-        ORDER BY score DESC
-        LIMIT 10;
-      `;
+    } catch (error) {
+      console.error('Score submission error:', error);
       
-      return new Response(
-        JSON.stringify(result.rows),
-        { status: 200, headers }
-      );
-    }
-
-    if (method === 'POST') {
-      const body = await req.json();
-      const { name, score } = body;
-      
-      if (!name || !score) {
-        return new Response(
-          JSON.stringify({ 
-            error: 'Name and score are required' 
-          }),
-          { status: 400, headers }
-        );
+      // Handle specific database errors
+      if (error.code === '23505') { // Unique violation
+        res.status(409).json({ error: 'Score already exists for this wallet' });
+      } else if (error.code === '23502') { // Not null violation
+        res.status(400).json({ error: 'Missing required fields' });
+      } else {
+        res.status(500).json({ error: 'Internal server error' });
       }
-
-      const result = await sql`
-        INSERT INTO scores (name, score, submitted_at)
-        VALUES (${name}, ${score}, NOW())
-        RETURNING id;
-      `;
-
-      return new Response(
-        JSON.stringify({ id: result.rows[0].id }),
-        { status: 200, headers }
-      );
     }
-
-    return new Response(
-      JSON.stringify({ 
-        error: `Method ${method} not allowed` 
-      }),
-      { status: 405, headers }
-    );
-
-  } catch (error) {
-    console.error('API Error:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code
-    });
-
-    return new Response(
-      JSON.stringify({
-        error: {
-          message: error.message,
-          code: error.code || '500',
-          type: error.name
-        }
-      }),
-      { 
-        status: 500, 
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      }
-    );
+  } else {
+    res.setHeader('Allow', ['POST']);
+    res.status(405).json({ error: 'Method not allowed' });
   }
 }
