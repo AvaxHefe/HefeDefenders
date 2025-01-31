@@ -45,18 +45,12 @@ class ScoreManager {
 
             // Handle Web3 provider initialization
             if (typeof window.ethereum !== 'undefined') {
-                // Store original provider
-                const originalProvider = window.ethereum;
-                
-                // Define non-configurable ethereum property
-                Object.defineProperty(window, 'ethereum', {
-                    value: originalProvider,
-                    writable: false,
-                    configurable: false
-                });
-
-                // Disable auto refresh
+                // Just disable auto refresh, don't modify the provider
                 window.ethereum.autoRefreshOnNetworkChange = false;
+            } else {
+                console.error('No Web3 provider found. Please install MetaMask or Core Wallet');
+                alert('Please install MetaMask or Core Wallet to connect');
+                return;
             }
 
             // Setup wallet connection
