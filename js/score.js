@@ -332,6 +332,14 @@ class ScoreManager {
             if (!data.scores || !Array.isArray(data.scores)) {
                 throw new Error('Invalid leaderboard data format');
             }
+
+            // Update prize pool information
+            if (data.prizePool) {
+                document.getElementById('totalPrizePool').textContent = parseFloat(data.prizePool.totalPrizePool).toFixed(2);
+                document.getElementById('firstPlacePrize').textContent = data.prizePool.distribution.firstPlace;
+                document.getElementById('secondPlacePrize').textContent = data.prizePool.distribution.secondPlace;
+                document.getElementById('thirdPlacePrize').textContent = data.prizePool.distribution.thirdPlace;
+            }
             
             if (leaderboardEl) {
                 if (data.scores.length === 0) {
@@ -349,12 +357,13 @@ class ScoreManager {
                     const rankDisplay = index < 3 ? medals[index] : `#${index + 1}`;
                     const addressDisplay = score.walletAddress;
                     const scoreValue = typeof score.score === 'number' ? score.score.toLocaleString() : '0';
+                    const prizeAmount = score.prizeAmount ? ` (${score.prizeAmount} USDC)` : '';
                     
                     return `
                         <div class="leaderboard-entry ${index < 3 ? 'top-three' : ''}">
                             <span class="rank">${rankDisplay}</span>
                             <span class="address">${addressDisplay}</span>
-                            <span class="score">${scoreValue}</span>
+                            <span class="score">${scoreValue}${prizeAmount}</span>
                         </div>
                     `;
                 }).join('');

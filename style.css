@@ -270,6 +270,48 @@ button:hover {
     text-shadow: 0 0 10px #00ff00;
 }
 
+.prize-pool-info {
+    padding: 1rem;
+    background: rgba(0, 255, 0, 0.1);
+    border-bottom: 1px solid #00ff00;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.prize-pool-info h4 {
+    color: #00ff00;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2em;
+    text-shadow: 0 0 10px #00ff00;
+}
+
+.prize-distribution {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 1rem;
+    padding: 0.5rem;
+}
+
+.prize-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1em;
+    color: #00ff00;
+    text-shadow: 0 0 5px #00ff00;
+}
+
+.prize-item .medal {
+    font-size: 1.5em;
+}
+
+#totalPrizePool {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #00ff00;
+    text-shadow: 0 0 10px #00ff00;
+}
+
 .close-button {
     background: none;
     border: none;
