@@ -59,6 +59,9 @@ function updateLocalHighScores(name, score) {
   localStorage.setItem('localHighScores', JSON.stringify(localHighScores));
 }
 
+// Get the base URL for API calls
+const API_BASE_URL = window.location.origin;
+
 async function submitToLeaderboard(name, score) {
   const submitButton = document.getElementById('submitScore');
   const originalText = submitButton.textContent;
@@ -72,7 +75,7 @@ async function submitToLeaderboard(name, score) {
 
   try {
     console.log('Submitting score to API:', { name, score });
-    const response = await fetch('/api/scores', {
+    const response = await fetch(`${API_BASE_URL}/api/scores`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -95,7 +98,7 @@ async function submitToLeaderboard(name, score) {
     }
 
     if (!response.ok) {
-      throw new Error(`Failed to submit score: ${data.error || response.statusText}`);
+      throw new Error(`Failed to submit score: ${data.error?.message || response.statusText}`);
     }
 
     console.log('Score submitted successfully:', data);
@@ -108,7 +111,7 @@ async function submitToLeaderboard(name, score) {
 
       for (const pendingScore of pendingScores) {
         try {
-          const pendingResponse = await fetch('/api/scores', {
+          const pendingResponse = await fetch(`${API_BASE_URL}/api/scores`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -187,7 +190,7 @@ async function updateLeaderboard() {
 
   try {
     console.log('Fetching global scores...');
-    const response = await fetch('/api/scores', {
+    const response = await fetch(`${API_BASE_URL}/api/scores`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -206,7 +209,7 @@ async function updateLeaderboard() {
     }
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch scores: ${scores.error || response.statusText}`);
+      throw new Error(`Failed to fetch scores: ${scores.error?.message || response.statusText}`);
     }
 
     console.log('Received global scores:', scores);
