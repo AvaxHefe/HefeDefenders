@@ -13,6 +13,8 @@ class ScoreManager {
         this.usdcContract = null;
         /** @type {any} */
         this.signer = null;
+        /** @type {Function|null} */
+        this.walletConnectHandler = null;
         
         this.updateScoreDisplay();
         
@@ -25,13 +27,12 @@ class ScoreManager {
             rpcUrl: "https://api.avax.network/ext/bc/C/rpc"
         };
         
-        // Initialize Web3 after a short delay to ensure DOM is ready
-        setTimeout(() => this.initializeWeb3(), 100);
-        
-        // Re-initialize Web3 when window is resized
-        window.addEventListener('resize', () => {
-            setTimeout(() => this.initializeWeb3(), 100);
-        });
+        // Initialize Web3 once DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.initializeWeb3());
+        } else {
+            this.initializeWeb3();
+        }
     }
 
     /** @returns {Promise<void>} */
@@ -63,9 +64,10 @@ class ScoreManager {
                 return;
             }
 
-            // Remove existing event listeners by cloning and replacing the button
-            const newConnectWalletBtn = connectWalletBtn.cloneNode(true);
-            connectWalletBtn.parentNode.replaceChild(newConnectWalletBtn, connectWalletBtn);
+            // If we already have a handler, remove it
+            if (this.walletConnectHandler) {
+                connectWalletBtn.removeEventListener('click', this.walletConnectHandler);
+            }
 
             // Handle Web3 provider initialization
             if (typeof window.ethereum !== 'undefined') {
@@ -78,10 +80,11 @@ class ScoreManager {
             }
 
             // Setup wallet connection
-            newConnectWalletBtn.addEventListener('click', async () => {
+            // Create and store the handler function with proper binding
+            this.walletConnectHandler = async () => {
                 try {
-                    newConnectWalletBtn.disabled = true;
-                    newConnectWalletBtn.textContent = 'Connecting...';
+                    connectWalletBtn.disabled = true;
+                    connectWalletBtn.textContent = 'Connecting...';
                     
                     // Check if Core Wallet or MetaMask is installed
                     if (!window.ethereum) {
@@ -89,8 +92,8 @@ class ScoreManager {
                     }
 
                     // Request account access
-                    const accounts = await window.ethereum.request({ 
-                        method: 'eth_requestAccounts' 
+                    const accounts = await window.ethereum.request({
+                        method: 'eth_requestAccounts'
                     });
 
                     if (!accounts || accounts.length === 0) {
@@ -149,7 +152,7 @@ class ScoreManager {
                     // Update UI
                     walletAddress.textContent = `${address.slice(0,6)}...${address.slice(-4)}`;
                     walletAddress.style.display = 'block';
-                    newConnectWalletBtn.style.display = 'none';
+                    connectWalletBtn.style.display = 'none';
                     startButton.classList.remove('hidden');
                     if (buyLivesBtn) buyLivesBtn.disabled = false;
                     
@@ -169,10 +172,13 @@ class ScoreManager {
                     console.error('Wallet connection failed:', error);
                     alert(error.message || 'Failed to connect wallet. Please try again.');
                 } finally {
-                    newConnectWalletBtn.disabled = false;
-                    newConnectWalletBtn.textContent = 'Connect Wallet';
+                    connectWalletBtn.disabled = false;
+                    connectWalletBtn.textContent = 'Connect Wallet';
                 }
-            });
+            };
+
+            // Attach the event listener
+            connectWalletBtn.addEventListener('click', this.walletConnectHandler);
 
             // Setup buy lives button
             if (buyLivesBtn) {
