@@ -52,21 +52,16 @@ let db;
 let isOnline = false;  // Start offline by default
 
 try {
-    const app = window.initializeFirebase(firebaseConfig);
-    db = window.getFirestore(app);
-    console.log('Firebase initialized with app:', app.name);
+    // Initialize Firebase with compatibility version
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    console.log('Firebase initialized');
     
-    // Test database connection using modular SDK
+    // Test database connection
     console.log('Testing Firebase connection...');
-    console.log('Available Firestore methods:', Object.keys(window.getFirestore));
     
-    const scoresRef = window.getFirestore.collection(db, 'scores');
-    console.log('Created scores collection reference');
-    
-    const testQuery = window.getFirestore.query(scoresRef, window.getFirestore.limit(1));
-    console.log('Created test query');
-    
-    window.getFirestore.getDocs(testQuery)
+    // Test connection with simple query
+    db.collection('scores').get()
         .then((snapshot) => {
             console.log('Successfully connected to Firebase leaderboard');
             console.log('Current scores count:', snapshot.size);
@@ -134,8 +129,7 @@ async function submitToLeaderboard(name, score) {
     let retries = 3;
     while (retries > 0) {
       try {
-        const scoresRef = window.getFirestore.collection(db, 'scores');
-        await window.getFirestore.addDoc(scoresRef, scoreData);
+        await db.collection('scores').add(scoreData);
         console.log('Score submitted to global leaderboard');
         submitButton.textContent = 'Saved Online!';
         isOnline = true;
@@ -209,18 +203,11 @@ async function updateLeaderboard() {
   if (db && isOnline) {
     console.log('Attempting to fetch online scores...');
     try {
-      console.log('Creating scores collection reference...');
-      const scoresRef = window.getFirestore.collection(db, 'scores');
-      
-      console.log('Building query...');
-      const q = window.getFirestore.query(
-        scoresRef,
-        window.getFirestore.orderBy('score', 'desc'),
-        window.getFirestore.limit(10)
-      );
-      
-      console.log('Executing query...');
-      const snapshot = await window.getFirestore.getDocs(q);
+      console.log('Executing Firestore query...');
+      const snapshot = await db.collection('scores')
+        .orderBy('score', 'desc')
+        .limit(10)
+        .get();
       console.log('Query results:', snapshot);
 
       if (!snapshot.empty) {

@@ -3,32 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com">
+    <meta http-equiv="Content-Security-Policy" content="default-src *; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://*.firebaseio.com https://*.googleapis.com; style-src 'self' 'unsafe-inline'; connect-src *; img-src 'self' data: blob:; font-src 'self'; object-src 'none';">
     <title>Hefe's Space Defenders</title>
     <link rel="stylesheet" href="style.css">
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-        import {
-            getFirestore,
-            collection,
-            getDocs,
-            addDoc,
-            query,
-            orderBy,
-            limit
-        } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
-        
-        window.initializeFirebase = initializeApp;
-        window.getFirestore = {
-            db: getFirestore,
-            collection: collection,
-            getDocs: getDocs,
-            addDoc: addDoc,
-            query: query,
-            orderBy: orderBy,
-            limit: limit
-        };
-    </script>
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <div class="game-container">
