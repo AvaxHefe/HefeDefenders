@@ -18,37 +18,74 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('Leaderboard request received');
+    
+    // First check if the table exists
+    console.log('Checking if leaderboard table exists...');
+    const tableExists = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'leaderboard'
+      );
+    `;
+
+    if (!tableExists.rows[0].exists) {
+      console.log('Leaderboard table does not exist, creating...');
+      // Create the table if it doesn't exist
+      await sql`
+        CREATE TABLE IF NOT EXISTS leaderboard (
+          id SERIAL PRIMARY KEY,
+          wallet_address TEXT NOT NULL,
+          score INTEGER NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT unique_wallet UNIQUE (wallet_address),
+          CONSTRAINT score_positive CHECK (score >= 0),
+          CONSTRAINT valid_wallet CHECK (wallet_address ~ '^0x[a-fA-F0-9]{40}$')
+        )
+      `;
+      
+      await sql`CREATE INDEX IF NOT EXISTS leaderboard_score_idx ON leaderboard(score DESC)`;
+      console.log('Leaderboard table created successfully');
+    }
+
     // Parse pagination parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     
+    console.log(`Fetching leaderboard data (page: ${page}, limit: ${limit})`);
+    
     // Validate pagination parameters
     if (page < 1 || limit < 1 || limit > 100) {
-      return res.status(400).json({ 
-        error: 'Invalid pagination parameters. Page must be >= 1 and limit must be between 1 and 100' 
+      return res.status(400).json({
+        error: 'Invalid pagination parameters. Page must be >= 1 and limit must be between 1 and 100'
       });
     }
 
     const offset = (page - 1) * limit;
 
     // Get total count for pagination
+    console.log('Getting total count...');
     const countResult = await sql`
       SELECT COUNT(*) as total FROM leaderboard
     `;
     const total = parseInt(countResult.rows[0].total);
+    console.log(`Total records: ${total}`);
 
     // Get paginated results
+    console.log('Fetching scores...');
     const { rows } = await sql`
-      SELECT 
+      SELECT
         wallet_address,
         score,
         last_updated,
         RANK() OVER (ORDER BY score DESC) as rank
-      FROM leaderboard 
-      ORDER BY score DESC 
+      FROM leaderboard
+      ORDER BY score DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
+    console.log(`Retrieved ${rows.length} scores`);
     
     // Format the response
     const formattedRows = rows.map(row => ({
@@ -76,15 +113,35 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Leaderboard fetch error:', error);
+    console.error('Leaderboard fetch error:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+      details: error.details
+    });
     
     // Handle specific database errors
     if (error.code === '42P01') { // Undefined table
-      res.status(500).json({ error: 'Leaderboard table not found' });
+      res.status(500).json({
+        error: 'Leaderboard table not found',
+        details: 'Please try again as the table will be created automatically'
+      });
     } else if (error.code === '42703') { // Undefined column
-      res.status(500).json({ error: 'Invalid column reference' });
+      res.status(500).json({
+        error: 'Invalid column reference',
+        details: error.message
+      });
+    } else if (error.code === '28P01') { // Invalid password
+      res.status(500).json({
+        error: 'Database authentication failed',
+        details: 'Please check database credentials'
+      });
     } else {
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({
+        error: 'Internal server error',
+        message: error.message,
+        code: error.code
+      });
     }
   }
 }
