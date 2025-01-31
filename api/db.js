@@ -31,22 +31,20 @@ async function initializeDatabase() {
 
     if (!tableExists.rows[0].exists) {
       console.log('Creating leaderboard table...');
-      await sql.begin(async (sql) => {
-        await sql`
-          CREATE TABLE IF NOT EXISTS leaderboard (
-            id SERIAL PRIMARY KEY,
-            wallet_address TEXT NOT NULL,
-            score INTEGER NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            CONSTRAINT unique_wallet UNIQUE (wallet_address),
-            CONSTRAINT score_positive CHECK (score >= 0),
-            CONSTRAINT valid_wallet CHECK (wallet_address ~ '^0x[a-fA-F0-9]{40}$')
-          )
-        `;
+      await sql`
+        CREATE TABLE IF NOT EXISTS leaderboard (
+          id SERIAL PRIMARY KEY,
+          wallet_address TEXT NOT NULL,
+          score INTEGER NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT unique_wallet UNIQUE (wallet_address),
+          CONSTRAINT score_positive CHECK (score >= 0),
+          CONSTRAINT valid_wallet CHECK (wallet_address ~ '^0x[a-fA-F0-9]{40}$')
+        )
+      `;
 
-        await sql`CREATE INDEX IF NOT EXISTS leaderboard_score_idx ON leaderboard(score DESC)`;
-      });
+      await sql`CREATE INDEX IF NOT EXISTS leaderboard_score_idx ON leaderboard(score DESC)`;
       console.log('Leaderboard table created successfully');
     } else {
       console.log('Leaderboard table already exists');
@@ -106,18 +104,15 @@ async function saveScore(walletAddress, score) {
     // Test connection first
     await testConnection();
 
-    const result = await sql.begin(async (sql) => {
-      const res = await sql`
-        INSERT INTO leaderboard (wallet_address, score, last_updated)
-        VALUES (${walletAddress}, ${score}, NOW())
-        ON CONFLICT (wallet_address) 
-        DO UPDATE SET 
-          score = GREATEST(leaderboard.score, ${score}),
-          last_updated = NOW()
-        RETURNING score
-      `;
-      return res;
-    });
+    const result = await sql`
+      INSERT INTO leaderboard (wallet_address, score, last_updated)
+      VALUES (${walletAddress}, ${score}, NOW())
+      ON CONFLICT (wallet_address) 
+      DO UPDATE SET 
+        score = GREATEST(leaderboard.score, ${score}),
+        last_updated = NOW()
+      RETURNING score
+    `;
 
     return result.rows[0];
   } catch (error) {
