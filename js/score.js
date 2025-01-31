@@ -416,11 +416,8 @@ class ScoreManager {
 
             leaderboardEl.innerHTML = data.scores.map((score, index) => {
                 const rankDisplay = index < 3 ? medals[index] : `#${index + 1}`;
-                const displayName = score.nickname || (
-                    score.wallet_address ?
-                    `${score.wallet_address.slice(0, 6)}...${score.wallet_address.slice(-4)}` :
-                    'Unknown Player'
-                );
+                const displayName = score.nickname ||
+                    `${score.wallet_address.slice(0, 6)}...${score.wallet_address.slice(-4)}`;
                 const scoreValue = score.score.toLocaleString();
                 const prizeAmount = score.prizeAmount ? ` (${score.prizeAmount} USDC)` : '';
 
