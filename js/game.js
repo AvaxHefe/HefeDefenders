@@ -76,13 +76,17 @@ class EnemyWave {
     }
 
     spawnWave() {
-        const extraRows = Math.min(Math.floor((this.waveNumber - 1) / 8), 2);
+        // Add extra row every 10 waves, max 2 extra rows
+        const extraRows = Math.min(Math.floor((this.waveNumber - 1) / 10), 2);
         const rows = Math.min(3 + extraRows, 4);
-        const cols = 8 + Math.min(Math.floor((this.waveNumber - 1) / 2), 4);
+        
+        // Add extra columns every 3 waves, max 4 extra columns
+        const cols = 8 + Math.min(Math.floor((this.waveNumber - 1) / 3), 4);
         
         // Fixed spacing
         const spacing = 60;
-        this.speed = 2 + Math.min(this.waveNumber * 0.25, 3);
+        // Speed increases by 0.15 per wave, max 2.5
+        this.speed = 2 + Math.min(this.waveNumber * 0.15, 2.5);
         
         const enemyWidth = 30;
         const enemyHeight = 25;
@@ -96,7 +100,8 @@ class EnemyWave {
                     height: enemyHeight,
                     type: Math.floor(Math.random() * 4) + 1,
                     alive: true,
-                    pointsMultiplier: 1 + (this.waveNumber * 0.5)
+                    // Points increase by 0.75 per wave to reward longer survival
+                    pointsMultiplier: 1 + (this.waveNumber * 0.75)
                 });
             }
         }
