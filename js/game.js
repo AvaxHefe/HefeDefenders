@@ -394,6 +394,9 @@ function gameLoop() {
             // Stop the game
             gameActive = false;
 
+            // Check if this is our last life
+            const isLastLife = window.lives <= 1;
+
             // Deduct a life
             window.lives = Math.max(0, window.lives - 1);
             window.livesDisplay.textContent = window.lives;
@@ -403,8 +406,8 @@ function gameLoop() {
             enemy.alive = false;
             currentWave.enemies.splice(index, 1);
 
-            // If we had 1 life or no lives left, show game over
-            if (window.lives <= 0 || window.lives === 1) {
+            // If this was our last life, show game over
+            if (isLastLife) {
                 const finalScore = window.scoreManager.currentScore;
                 const gameOverScreen = document.getElementById('gameOverScreen');
                 const finalScoreSpan = document.getElementById('finalScore');
