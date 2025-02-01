@@ -403,8 +403,8 @@ function gameLoop() {
             enemy.alive = false;
             currentWave.enemies.splice(index, 1);
 
-            if (window.lives <= 0) {
-                // If no lives left, show game over screen
+            // If we had 1 life or no lives left, show game over
+            if (window.lives <= 0 || window.lives === 1) {
                 const finalScore = window.scoreManager.currentScore;
                 const gameOverScreen = document.getElementById('gameOverScreen');
                 const finalScoreSpan = document.getElementById('finalScore');
@@ -418,6 +418,7 @@ function gameLoop() {
                     window.scoreManager.saveHighScore();
                 }
             } else {
+                // If we had more than 1 life, show death popup
                 // Show "You died" popup
                 const popup = document.createElement('div');
                 popup.className = 'death-popup';
