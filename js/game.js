@@ -76,17 +76,17 @@ class EnemyWave {
     }
 
     spawnWave() {
-        // Add extra row every 10 waves, max 2 extra rows
-        const extraRows = Math.min(Math.floor((this.waveNumber - 1) / 10), 2);
+        // Add extra row every 9 waves, max 2 extra rows
+        const extraRows = Math.min(Math.floor((this.waveNumber - 1) / 9), 2);
         const rows = Math.min(3 + extraRows, 4);
         
-        // Add extra columns every 3 waves, max 4 extra columns
-        const cols = 8 + Math.min(Math.floor((this.waveNumber - 1) / 3), 4);
+        // Add extra columns every 2.5 waves, max 4 extra columns
+        const cols = 8 + Math.min(Math.floor((this.waveNumber - 1) / 2.5), 4);
         
         // Fixed spacing
         const spacing = 60;
-        // Speed increases by 0.15 per wave, max 2.5
-        this.speed = 2 + Math.min(this.waveNumber * 0.15, 2.5);
+        // Speed increases by 0.2 per wave, max 2.75
+        this.speed = 2 + Math.min(this.waveNumber * 0.2, 2.75);
         
         const enemyWidth = 30;
         const enemyHeight = 25;
@@ -430,20 +430,23 @@ function gameLoop() {
                 popup.innerHTML = `
                     <h2>You Died!</h2>
                     <p>-1 Life</p>
-                    <p>Lives remaining: ${window.lives}</p>
+                    <p>Lives remaining: ${Math.max(0, window.lives)}</p>
                     <button id="restartLevel">Start Level Over</button>
                 `;
                 document.querySelector('.game-container').appendChild(popup);
 
                 // Handle restart level button
-                document.getElementById('restartLevel').addEventListener('click', () => {
-                    popup.remove();
-                    // Reset wave to start of current level
-                    currentWave = new EnemyWave(currentWave.waveNumber);
-                    currentWave.spawnWave();
-                    gameActive = true;
-                    gameLoop();
-                });
+                const restartBtn = document.getElementById('restartLevel');
+                if (restartBtn) {
+                    restartBtn.onclick = () => {
+                        popup.remove();
+                        // Reset wave to start of current level
+                        currentWave = new EnemyWave(currentWave.waveNumber);
+                        currentWave.spawnWave();
+                        gameActive = true;
+                        gameLoop();
+                    };
+                }
             }
         }
     });
