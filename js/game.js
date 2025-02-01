@@ -411,8 +411,8 @@ function gameLoop() {
             enemy.alive = false;
             currentWave.enemies.splice(index, 1);
 
-            // Show game over only when we're already at 0 lives and die again
-            if (window.lives === 0 && currentLives === 0) {
+            // Show game over when transitioning from 1 to 0 lives
+            if (currentLives === 1) {
                 const finalScore = window.scoreManager.currentScore;
                 const gameOverScreen = document.getElementById('gameOverScreen');
                 const finalScoreSpan = document.getElementById('finalScore');
