@@ -399,8 +399,11 @@ function gameLoop() {
             // Stop the game
             gameActive = false;
 
+            // Store current lives before deducting
+            const currentLives = window.lives;
+            
             // Deduct a life
-            window.lives = Math.max(0, window.lives - 1);
+            window.lives = Math.max(0, currentLives - 1);
             window.livesDisplay.textContent = window.lives;
             localStorage.setItem('currentLives', window.lives);
 
@@ -408,8 +411,8 @@ function gameLoop() {
             enemy.alive = false;
             currentWave.enemies.splice(index, 1);
 
-            // Show game over only when lives reach 0
-            if (window.lives <= 0) {
+            // Show game over only when we're using our last life (transitioning from 1 to 0)
+            if (currentLives === 1) {
                 const finalScore = window.scoreManager.currentScore;
                 const gameOverScreen = document.getElementById('gameOverScreen');
                 const finalScoreSpan = document.getElementById('finalScore');
@@ -430,7 +433,7 @@ function gameLoop() {
                 popup.innerHTML = `
                     <h2>You Died!</h2>
                     <p>-1 Life</p>
-                    <p>Lives remaining: ${Math.max(0, window.lives)}</p>
+                    <p>Lives remaining: ${window.lives}</p>
                     <button id="restartLevel">Start Level Over</button>
                 `;
                 document.querySelector('.game-container').appendChild(popup);
