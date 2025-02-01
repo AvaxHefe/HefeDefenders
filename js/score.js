@@ -153,6 +153,42 @@ class ScoreManager {
                     walletAddress.textContent = `${address.slice(0,6)}...${address.slice(-4)}`;
                     walletAddress.style.display = 'block';
                     connectWalletBtn.style.display = 'none';
+                    
+                    // Show disconnect button
+                    const disconnectBtn = document.getElementById('disconnectWallet');
+                    if (disconnectBtn) {
+                        disconnectBtn.classList.remove('hidden');
+                        disconnectBtn.addEventListener('click', () => {
+                            // Reset wallet state
+                            this.walletConnected = false;
+                            this.userAddress = '';
+                            this.usdcContract = null;
+                            this.signer = null;
+                            window.lives = 0;
+                            localStorage.setItem('currentLives', 0);
+                            
+                            // Update UI
+                            walletAddress.style.display = 'none';
+                            connectWalletBtn.style.display = 'block';
+                            disconnectBtn.classList.add('hidden');
+                            startButton.classList.add('hidden');
+                            
+                            // Hide nickname section and buy lives button
+                            const nicknameSection = document.getElementById('nicknameSection');
+                            const buyLivesStartBtn = document.getElementById('buyLivesStart');
+                            if (nicknameSection) nicknameSection.classList.add('hidden');
+                            if (buyLivesStartBtn) buyLivesStartBtn.classList.add('hidden');
+                            
+                            // Reset balance display
+                            if (balanceDisplay) balanceDisplay.textContent = '0.00';
+                            
+                            // Hide game UI if visible
+                            const startScreen = document.getElementById('startScreen');
+                            const gameOverScreen = document.getElementById('gameOverScreen');
+                            if (startScreen) startScreen.classList.remove('hidden');
+                            if (gameOverScreen) gameOverScreen.classList.add('hidden');
+                        });
+                    }
 
                     // Handle nickname section
                     const nicknameSection = document.getElementById('nicknameSection');
@@ -240,6 +276,11 @@ class ScoreManager {
                             if (window.livesDisplay) {
                                 window.livesDisplay.textContent = window.lives;
                             }
+                            // Show buy lives button on start screen
+                            const buyLivesStartBtn = document.getElementById('buyLivesStart');
+                            if (buyLivesStartBtn) {
+                                buyLivesStartBtn.classList.remove('hidden');
+                            }
                             alert('You have already used your free life. Please purchase more lives to continue playing.');
                         }
                     } catch (error) {
@@ -265,66 +306,76 @@ class ScoreManager {
             // Attach the event listener
             connectWalletBtn.addEventListener('click', this.walletConnectHandler);
 
-            // Setup buy lives button
-            if (buyLivesBtn) {
-                buyLivesBtn.addEventListener('click', async () => {
-                    if (!this.walletConnected || !this.usdcContract) {
-                        alert('Please connect your wallet first');
-                        return;
+            // Setup buy lives buttons
+            const handleBuyLives = async (button) => {
+                if (!this.walletConnected || !this.usdcContract) {
+                    alert('Please connect your wallet first');
+                    return;
+                }
+                
+                button.disabled = true;
+                button.textContent = 'Processing...';
+                if (transactionStatus) {
+                    transactionStatus.textContent = 'Transaction pending...';
+                    transactionStatus.className = 'transaction-status pending';
+                }
+                
+                try {
+                    const price = ethers.utils.parseUnits("0.25", 6); // USDC has 6 decimals
+                    
+                    // Check USDC balance
+                    const balance = await this.usdcContract.balanceOf(this.userAddress);
+                    if (balance.lt(price)) {
+                        throw new Error('Insufficient USDC balance');
                     }
                     
-                    buyLivesBtn.disabled = true;
-                    buyLivesBtn.textContent = 'Processing...';
+                    // Send transaction
+                    const tx = await this.usdcContract.transfer(this.config.merchantWallet, price);
                     if (transactionStatus) {
-                        transactionStatus.textContent = 'Transaction pending...';
-                        transactionStatus.className = 'transaction-status pending';
+                        transactionStatus.textContent = 'Confirming transaction...';
                     }
                     
-                    try {
-                        const price = ethers.utils.parseUnits("0.25", 6); // USDC has 6 decimals
-                        
-                        // Check USDC balance
-                        const balance = await this.usdcContract.balanceOf(this.userAddress);
-                        if (balance.lt(price)) {
-                            throw new Error('Insufficient USDC balance');
-                        }
-                        
-                        // Send transaction
-                        const tx = await this.usdcContract.transfer(this.config.merchantWallet, price);
-                        if (transactionStatus) {
-                            transactionStatus.textContent = 'Confirming transaction...';
-                        }
-                        
-                        await tx.wait();
-                        
-                        // Update lives and UI
-                        const currentLives = parseInt(localStorage.getItem('currentLives')) || 0;
-                        const newLives = currentLives + 5;
-                        window.lives = newLives;
-                        localStorage.setItem('currentLives', newLives);
-                        if (window.livesDisplay) {
-                            window.livesDisplay.textContent = newLives;
-                        }
-                        
-                        if (transactionStatus) {
-                            transactionStatus.textContent = 'Purchase successful!';
-                            transactionStatus.className = 'transaction-status success';
-                        }
-                        
-                        // Update USDC balance
-                        await this.updateUSDCBalance(balanceDisplay);
-                        
-                    } catch (error) {
-                        console.error('Purchase failed:', error);
-                        if (transactionStatus) {
-                            transactionStatus.textContent = `Error: ${error.message}`;
-                            transactionStatus.className = 'transaction-status error';
-                        }
-                    } finally {
-                        buyLivesBtn.textContent = 'Buy 5 Lives (0.25 USDC)';
-                        buyLivesBtn.disabled = false;
+                    await tx.wait();
+                    
+                    // Update lives and UI
+                    const currentLives = parseInt(localStorage.getItem('currentLives')) || 0;
+                    const newLives = currentLives + 5;
+                    window.lives = newLives;
+                    localStorage.setItem('currentLives', newLives);
+                    if (window.livesDisplay) {
+                        window.livesDisplay.textContent = newLives;
                     }
-                });
+                    
+                    if (transactionStatus) {
+                        transactionStatus.textContent = 'Purchase successful!';
+                        transactionStatus.className = 'transaction-status success';
+                    }
+                    
+                    // Update USDC balance
+                    await this.updateUSDCBalance(balanceDisplay);
+                    
+                    // Show start button after successful purchase
+                    startButton.classList.remove('hidden');
+                    
+                } catch (error) {
+                    console.error('Purchase failed:', error);
+                    if (transactionStatus) {
+                        transactionStatus.textContent = `Error: ${error.message}`;
+                        transactionStatus.className = 'transaction-status error';
+                    }
+                } finally {
+                    button.textContent = 'Buy 5 Lives (0.25 USDC)';
+                    button.disabled = false;
+                }
+            };
+
+            // Setup both buy lives buttons
+            const buyLivesStartBtn = document.getElementById('buyLivesStart');
+            if (buyLivesStartBtn) {
+                buyLivesStartBtn.addEventListener('click', () => handleBuyLives(buyLivesStartBtn));
+            }
+            if (buyLivesBtn) {
+                buyLivesBtn.addEventListener('click', () => handleBuyLives(buyLivesBtn));
             }
             
         } catch (error) {

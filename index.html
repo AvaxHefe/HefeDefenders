@@ -19,12 +19,22 @@
             <button id="connectWallet" class="wallet-button">
                 <span class="wallet-icon">👛</span> Connect Wallet
             </button>
-            <div id="walletAddress" class="wallet-address"></div>
+            <div class="wallet-info">
+                <div id="walletAddress" class="wallet-address"></div>
+                <button id="disconnectWallet" class="disconnect-button hidden">
+                    <span class="wallet-icon">🔌</span> Disconnect
+                </button>
+            </div>
             <div id="nicknameSection" class="hidden">
                 <input type="text" id="nicknameInput" placeholder="Enter nickname (3-20 chars)" maxlength="20" />
                 <button id="saveNickname">Save Nickname</button>
             </div>
             <button id="startButton" class="hidden">Start Game</button>
+            <div class="purchase-section">
+                <button id="buyLivesStart" class="buy-lives hidden">
+                    Buy 5 Lives (0.25 USDC)
+                </button>
+            </div>
             <div class="balance-display">
                 USDC Balance: <span id="usdcBalance">0.00</span>
             </div>
