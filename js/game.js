@@ -399,11 +399,8 @@ function gameLoop() {
             // Stop the game
             gameActive = false;
 
-            // Store current lives before deducting
-            const currentLives = window.lives;
-            
             // Deduct a life
-            window.lives = Math.max(0, currentLives - 1);
+            window.lives = Math.max(0, window.lives - 1);
             window.livesDisplay.textContent = window.lives;
             localStorage.setItem('currentLives', window.lives);
 
@@ -411,8 +408,8 @@ function gameLoop() {
             enemy.alive = false;
             currentWave.enemies.splice(index, 1);
 
-            // Show game over only when we're using our last life (transitioning from 1 to 0)
-            if (currentLives === 1) {
+            // Show game over only when lives are 0
+            if (window.lives === 0) {
                 const finalScore = window.scoreManager.currentScore;
                 const gameOverScreen = document.getElementById('gameOverScreen');
                 const finalScoreSpan = document.getElementById('finalScore');
