@@ -392,10 +392,12 @@ function gameLoop() {
         currentWave.spawnWave();
     }
 
-    // Check if enemies reached bottom
+    // Check if any enemy reached bottom
+    let enemyReachedBottom = false;
     currentWave.enemies.forEach((enemy, index) => {
         const bottomThreshold = 500; // canvas.height - 100
-        if (enemy.alive && enemy.y + enemy.height >= bottomThreshold) {
+        if (enemy.alive && enemy.y + enemy.height >= bottomThreshold && !enemyReachedBottom) {
+            enemyReachedBottom = true;
             // Stop the game
             gameActive = false;
 
@@ -407,7 +409,7 @@ function gameLoop() {
             window.livesDisplay.textContent = window.lives;
             localStorage.setItem('currentLives', window.lives);
 
-            // Remove the enemy that reached the bottom
+            // Remove all enemies that reached bottom
             enemy.alive = false;
             currentWave.enemies.splice(index, 1);
 
