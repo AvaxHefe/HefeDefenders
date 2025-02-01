@@ -391,17 +391,21 @@ function gameLoop() {
     currentWave.enemies.forEach((enemy, index) => {
         const bottomThreshold = 500; // canvas.height - 100
         if (enemy.alive && enemy.y + enemy.height >= bottomThreshold) {
-            window.lives = Math.max(0, window.lives - 1); // Prevent negative lives
+            // Stop the game
+            gameActive = false;
+
+            // Deduct a life
+            window.lives = Math.max(0, window.lives - 1);
             window.livesDisplay.textContent = window.lives;
             localStorage.setItem('currentLives', window.lives);
+
+            // Remove the enemy that reached the bottom
             enemy.alive = false;
             currentWave.enemies.splice(index, 1);
-            
+
             if (window.lives <= 0) {
-                gameActive = false;
+                // If no lives left, show game over screen
                 const finalScore = window.scoreManager.currentScore;
-                
-                // Update UI
                 const gameOverScreen = document.getElementById('gameOverScreen');
                 const finalScoreSpan = document.getElementById('finalScore');
                 if (finalScoreSpan) {
@@ -409,10 +413,31 @@ function gameLoop() {
                 }
                 gameOverScreen.classList.remove('hidden');
 
-                // Save score after UI update
+                // Save score
                 if (window.scoreManager && finalScore > 0) {
                     window.scoreManager.saveHighScore();
                 }
+            } else {
+                // Show "You died" popup
+                const popup = document.createElement('div');
+                popup.className = 'death-popup';
+                popup.innerHTML = `
+                    <h2>You Died!</h2>
+                    <p>-1 Life</p>
+                    <p>Lives remaining: ${window.lives}</p>
+                    <button id="restartLevel">Start Level Over</button>
+                `;
+                document.querySelector('.game-container').appendChild(popup);
+
+                // Handle restart level button
+                document.getElementById('restartLevel').addEventListener('click', () => {
+                    popup.remove();
+                    // Reset wave to start of current level
+                    currentWave = new EnemyWave(currentWave.waveNumber);
+                    currentWave.spawnWave();
+                    gameActive = true;
+                    gameLoop();
+                });
             }
         }
     });
