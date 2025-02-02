@@ -163,8 +163,8 @@ laserSound.preload = 'auto';
 
 // Add event listener for when music is about to end
 bgMusic.addEventListener('timeupdate', () => {
-    // If we're within 0.5 seconds of the end, reset to start
-    if (bgMusic.currentTime > bgMusic.duration - 0.5) {
+    // If we're within 0.1 seconds of the end, reset to start
+    if (bgMusic.currentTime > bgMusic.duration - 0.1) {
         bgMusic.currentTime = 0;
     }
 });
@@ -332,6 +332,15 @@ function gameLoop() {
     if (!gameActive) return;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw end line
+    const bottomThreshold = 500;
+    ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, bottomThreshold);
+    ctx.lineTo(canvas.width, bottomThreshold);
+    ctx.stroke();
     
     // Handle player movement
     if (keys.ArrowLeft || keys.KeyA) player.move('left');
